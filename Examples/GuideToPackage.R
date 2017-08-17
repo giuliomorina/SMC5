@@ -201,3 +201,62 @@ print(blocks2)
 # GIBBS PARTICLE FILTER #
 #########################
 
+############################
+# APPROXIMATING STATISTICS #
+############################
+
+# The function computeApproxStatisticFilter provides
+# a way to compute 4 different statistics for the filter corresponding to the following type:
+# 1. "mean" -> expected value of a specific component
+# 2. "sum" -> sum over all the component of their expected value
+# 3. "mean_squared" -> expected value of the square specific component
+# 4. "sum_squared " -> sum over all the component of the expected value of their square
+
+#True statistic is just computed on the dataset that generated the data
+trueStatistics <- list(meanStatistic = computeTrueStatisticFilter(X_data = dataset$X_data, n = 2,
+                                                                 type="mean", comp = 3),
+                      sumStatistic = computeTrueStatisticFilter(X_data = dataset$X_data, n = 2,
+                                                                 type="sum"),
+                      meanSquaredStatistic = computeTrueStatisticFilter(X_data = dataset$X_data, n = 2,
+                                                                 type="mean_squared", comp = 3),
+                      SumSquaredStatistic = computeTrueStatisticFilter(X_data = dataset$X_data, n = 2,
+                                                                 type="sum_squared"))
+#This is the estimate given by the Kalman filter
+approxStatisticKalman <- list(meanStatistic = computeKalmanStatisticFilter(fParams = fParams, gParams = gParams,
+                                                                           n = 2, type = "mean", comp = 3),
+                              sumStatistic = computeKalmanStatisticFilter(fParams = fParams, gParams = gParams,
+                                                                           n = 2, type = "sum"),
+                              meanSquaredStatistic = computeKalmanStatisticFilter(fParams = fParams, gParams = gParams,
+                                                                           n = 2, type = "mean_squared", comp = 3),
+                              sumSquaredStatistic = computeKalmanStatisticFilter(fParams = fParams, gParams = gParams,
+                                                                           n = 2, type = "sum_squared"))
+
+approxStatisticsBootstrap <- list(meanStatistic = computeApproxStatisticFilter(particles = bootstrapPFRes$filteringParticle,
+                                                                      logWeights = bootstrapPFRes$filteringLogWeights,
+                                                                      n = 2, type = "mean", comp = 3),
+                                  sumStatistic = computeApproxStatisticFilter(particles = bootstrapPFRes$filteringParticle,
+                                                                               logWeights = bootstrapPFRes$filteringLogWeights,
+                                                                               n = 2, type = "sum"),
+                                  meanSquaredStatistic = computeApproxStatisticFilter(particles = bootstrapPFRes$filteringParticle,
+                                                                               logWeights = bootstrapPFRes$filteringLogWeights,
+                                                                               n = 2, type = "mean_squared", comp = 3),
+                                  sumSquaredStatistic = computeApproxStatisticFilter(particles = bootstrapPFRes$filteringParticle,
+                                                                               logWeights = bootstrapPFRes$filteringLogWeights,
+                                                                               n = 2, type = "sum_squared"))
+
+approxStatisticBlock <-  list(meanStatistic = computeApproxStatisticFilter(particles = blockPFRes$filteringParticle,
+                                                                           logWeights = blockPFRes$filteringLogWeights,
+                                                                           n = 2, blocks = blocks, type = "mean", comp = 3),
+                              sumStatistic = computeApproxStatisticFilter(particles = blockPFRes$filteringParticle,
+                                                                           logWeights = blockPFRes$filteringLogWeights,
+                                                                           n = 2, blocks = blocks, type = "sum"),
+                              meanSquaredStatistic = computeApproxStatisticFilter(particles = blockPFRes$filteringParticle,
+                                                                           logWeights = blockPFRes$filteringLogWeights,
+                                                                           n = 2, blocks = blocks, type = "mean_squared", comp = 3),
+                              sumSquaredStatistic = computeApproxStatisticFilter(particles = blockPFRes$filteringParticle,
+                                                                           logWeights = blockPFRes$filteringLogWeights,
+                                                                           n = 2, blocks = blocks, type = "sum_squared"))
+print(trueStatistics)
+print(approxStatisticKalman)
+print(approxStatisticsBootstrap)
+print(approxStatisticBlock)

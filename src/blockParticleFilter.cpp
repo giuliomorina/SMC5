@@ -86,7 +86,7 @@ List blockParticleFilter(int N, int n, List blocks, List fParams, List gParams,
       }
       if(!resampling) {
         //If there is no resampling scheme the weight is the product of the g times the weights at the previous step
-        log_weights.slice(i).row(t) = log_weights.slice(i).row(t) % log_weights.slice(i).row(t-1); //% is element wise multiplication
+        log_weights.slice(i).row(t) += log_weights.slice(i).row(t-1); //% is element wise multiplication
       }
     }
 

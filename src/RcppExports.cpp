@@ -6,53 +6,9 @@
 
 using namespace Rcpp;
 
-// blockParticleFilter
-List blockParticleFilter(int N, int n, List blocks, List fParams, List gParams, bool resampling);
-RcppExport SEXP _SMC5_blockParticleFilter(SEXP NSEXP, SEXP nSEXP, SEXP blocksSEXP, SEXP fParamsSEXP, SEXP gParamsSEXP, SEXP resamplingSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< int >::type N(NSEXP);
-    Rcpp::traits::input_parameter< int >::type n(nSEXP);
-    Rcpp::traits::input_parameter< List >::type blocks(blocksSEXP);
-    Rcpp::traits::input_parameter< List >::type fParams(fParamsSEXP);
-    Rcpp::traits::input_parameter< List >::type gParams(gParamsSEXP);
-    Rcpp::traits::input_parameter< bool >::type resampling(resamplingSEXP);
-    rcpp_result_gen = Rcpp::wrap(blockParticleFilter(N, n, blocks, fParams, gParams, resampling));
-    return rcpp_result_gen;
-END_RCPP
-}
-// sequentialImportanceSampling
-List sequentialImportanceSampling(int N, int n, List fParams, List gParams);
-RcppExport SEXP _SMC5_sequentialImportanceSampling(SEXP NSEXP, SEXP nSEXP, SEXP fParamsSEXP, SEXP gParamsSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< int >::type N(NSEXP);
-    Rcpp::traits::input_parameter< int >::type n(nSEXP);
-    Rcpp::traits::input_parameter< List >::type fParams(fParamsSEXP);
-    Rcpp::traits::input_parameter< List >::type gParams(gParamsSEXP);
-    rcpp_result_gen = Rcpp::wrap(sequentialImportanceSampling(N, n, fParams, gParams));
-    return rcpp_result_gen;
-END_RCPP
-}
-// bootstrapParticleFilter
-List bootstrapParticleFilter(int N, int n, List fParams, List gParams);
-RcppExport SEXP _SMC5_bootstrapParticleFilter(SEXP NSEXP, SEXP nSEXP, SEXP fParamsSEXP, SEXP gParamsSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< int >::type N(NSEXP);
-    Rcpp::traits::input_parameter< int >::type n(nSEXP);
-    Rcpp::traits::input_parameter< List >::type fParams(fParamsSEXP);
-    Rcpp::traits::input_parameter< List >::type gParams(gParamsSEXP);
-    rcpp_result_gen = Rcpp::wrap(bootstrapParticleFilter(N, n, fParams, gParams));
-    return rcpp_result_gen;
-END_RCPP
-}
 // KalmanFilterCpp
 List KalmanFilterCpp(arma::vec& m_0, arma::mat& C_0, arma::mat& F_matrix, arma::mat& G, arma::mat& V, arma::mat& W, arma::mat& y);
-RcppExport SEXP _SMC5_KalmanFilterCpp(SEXP m_0SEXP, SEXP C_0SEXP, SEXP F_matrixSEXP, SEXP GSEXP, SEXP VSEXP, SEXP WSEXP, SEXP ySEXP) {
+RcppExport SEXP SMC5_KalmanFilterCpp(SEXP m_0SEXP, SEXP C_0SEXP, SEXP F_matrixSEXP, SEXP GSEXP, SEXP VSEXP, SEXP WSEXP, SEXP ySEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -69,7 +25,7 @@ END_RCPP
 }
 // KalmanSmoothingCpp
 List KalmanSmoothingCpp(arma::colvec& m_0, arma::mat& C_0, arma::mat& F_matrix, arma::mat& G, arma::mat& V, arma::mat& W, arma::mat& y);
-RcppExport SEXP _SMC5_KalmanSmoothingCpp(SEXP m_0SEXP, SEXP C_0SEXP, SEXP F_matrixSEXP, SEXP GSEXP, SEXP VSEXP, SEXP WSEXP, SEXP ySEXP) {
+RcppExport SEXP SMC5_KalmanSmoothingCpp(SEXP m_0SEXP, SEXP C_0SEXP, SEXP F_matrixSEXP, SEXP GSEXP, SEXP VSEXP, SEXP WSEXP, SEXP ySEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -86,7 +42,7 @@ END_RCPP
 }
 // KalmanSamplerCpp
 arma::mat KalmanSamplerCpp(int n, List kalmanRes, int time);
-RcppExport SEXP _SMC5_KalmanSamplerCpp(SEXP nSEXP, SEXP kalmanResSEXP, SEXP timeSEXP) {
+RcppExport SEXP SMC5_KalmanSamplerCpp(SEXP nSEXP, SEXP kalmanResSEXP, SEXP timeSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -99,7 +55,7 @@ END_RCPP
 }
 // dmvnrmArma
 arma::vec dmvnrmArma(arma::mat& x, arma::rowvec& mean, arma::mat& sigma, bool logd, bool diag);
-RcppExport SEXP _SMC5_dmvnrmArma(SEXP xSEXP, SEXP meanSEXP, SEXP sigmaSEXP, SEXP logdSEXP, SEXP diagSEXP) {
+RcppExport SEXP SMC5_dmvnrmArma(SEXP xSEXP, SEXP meanSEXP, SEXP sigmaSEXP, SEXP logdSEXP, SEXP diagSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -114,7 +70,7 @@ END_RCPP
 }
 // dnrmArma
 double dnrmArma(double x, double mean, double sigma, bool logd);
-RcppExport SEXP _SMC5_dnrmArma(SEXP xSEXP, SEXP meanSEXP, SEXP sigmaSEXP, SEXP logdSEXP) {
+RcppExport SEXP SMC5_dnrmArma(SEXP xSEXP, SEXP meanSEXP, SEXP sigmaSEXP, SEXP logdSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -128,7 +84,7 @@ END_RCPP
 }
 // mvrnormArma
 arma::mat mvrnormArma(int n, arma::rowvec& mean, arma::mat& sigma, bool diag);
-RcppExport SEXP _SMC5_mvrnormArma(SEXP nSEXP, SEXP meanSEXP, SEXP sigmaSEXP, SEXP diagSEXP) {
+RcppExport SEXP SMC5_mvrnormArma(SEXP nSEXP, SEXP meanSEXP, SEXP sigmaSEXP, SEXP diagSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -142,7 +98,7 @@ END_RCPP
 }
 // rnormArma
 arma::colvec rnormArma(int n, double mean, double sigma);
-RcppExport SEXP _SMC5_rnormArma(SEXP nSEXP, SEXP meanSEXP, SEXP sigmaSEXP) {
+RcppExport SEXP SMC5_rnormArma(SEXP nSEXP, SEXP meanSEXP, SEXP sigmaSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -153,9 +109,53 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// blockParticleFilter
+List blockParticleFilter(int N, int n, List blocks, List fParams, List gParams, bool resampling);
+RcppExport SEXP SMC5_blockParticleFilter(SEXP NSEXP, SEXP nSEXP, SEXP blocksSEXP, SEXP fParamsSEXP, SEXP gParamsSEXP, SEXP resamplingSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type N(NSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< List >::type blocks(blocksSEXP);
+    Rcpp::traits::input_parameter< List >::type fParams(fParamsSEXP);
+    Rcpp::traits::input_parameter< List >::type gParams(gParamsSEXP);
+    Rcpp::traits::input_parameter< bool >::type resampling(resamplingSEXP);
+    rcpp_result_gen = Rcpp::wrap(blockParticleFilter(N, n, blocks, fParams, gParams, resampling));
+    return rcpp_result_gen;
+END_RCPP
+}
+// sequentialImportanceSampling
+List sequentialImportanceSampling(int N, int n, List fParams, List gParams);
+RcppExport SEXP SMC5_sequentialImportanceSampling(SEXP NSEXP, SEXP nSEXP, SEXP fParamsSEXP, SEXP gParamsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type N(NSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< List >::type fParams(fParamsSEXP);
+    Rcpp::traits::input_parameter< List >::type gParams(gParamsSEXP);
+    rcpp_result_gen = Rcpp::wrap(sequentialImportanceSampling(N, n, fParams, gParams));
+    return rcpp_result_gen;
+END_RCPP
+}
+// bootstrapParticleFilter
+List bootstrapParticleFilter(int N, int n, List fParams, List gParams);
+RcppExport SEXP SMC5_bootstrapParticleFilter(SEXP NSEXP, SEXP nSEXP, SEXP fParamsSEXP, SEXP gParamsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type N(NSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< List >::type fParams(fParamsSEXP);
+    Rcpp::traits::input_parameter< List >::type gParams(gParamsSEXP);
+    rcpp_result_gen = Rcpp::wrap(bootstrapParticleFilter(N, n, fParams, gParams));
+    return rcpp_result_gen;
+END_RCPP
+}
 // logAddition
 double logAddition(double x, double y);
-RcppExport SEXP _SMC5_logAddition(SEXP xSEXP, SEXP ySEXP) {
+RcppExport SEXP SMC5_logAddition(SEXP xSEXP, SEXP ySEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -167,7 +167,7 @@ END_RCPP
 }
 // logAdditionSum
 double logAdditionSum(arma::vec& x);
-RcppExport SEXP _SMC5_logAdditionSum(SEXP xSEXP) {
+RcppExport SEXP SMC5_logAdditionSum(SEXP xSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -178,7 +178,7 @@ END_RCPP
 }
 // ProbSampleReplace
 arma::uvec ProbSampleReplace(int nOrig, int size, arma::vec prob);
-RcppExport SEXP _SMC5_ProbSampleReplace(SEXP nOrigSEXP, SEXP sizeSEXP, SEXP probSEXP) {
+RcppExport SEXP SMC5_ProbSampleReplace(SEXP nOrigSEXP, SEXP sizeSEXP, SEXP probSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -191,7 +191,7 @@ END_RCPP
 }
 // checkDiagonal
 bool checkDiagonal(arma::mat& X);
-RcppExport SEXP _SMC5_checkDiagonal(SEXP XSEXP) {
+RcppExport SEXP SMC5_checkDiagonal(SEXP XSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -202,7 +202,7 @@ END_RCPP
 }
 // checkSymmetric
 bool checkSymmetric(arma::mat& X);
-RcppExport SEXP _SMC5_checkSymmetric(SEXP XSEXP) {
+RcppExport SEXP SMC5_checkSymmetric(SEXP XSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -213,21 +213,21 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_SMC5_blockParticleFilter", (DL_FUNC) &_SMC5_blockParticleFilter, 6},
-    {"_SMC5_sequentialImportanceSampling", (DL_FUNC) &_SMC5_sequentialImportanceSampling, 4},
-    {"_SMC5_bootstrapParticleFilter", (DL_FUNC) &_SMC5_bootstrapParticleFilter, 4},
-    {"_SMC5_KalmanFilterCpp", (DL_FUNC) &_SMC5_KalmanFilterCpp, 7},
-    {"_SMC5_KalmanSmoothingCpp", (DL_FUNC) &_SMC5_KalmanSmoothingCpp, 7},
-    {"_SMC5_KalmanSamplerCpp", (DL_FUNC) &_SMC5_KalmanSamplerCpp, 3},
-    {"_SMC5_dmvnrmArma", (DL_FUNC) &_SMC5_dmvnrmArma, 5},
-    {"_SMC5_dnrmArma", (DL_FUNC) &_SMC5_dnrmArma, 4},
-    {"_SMC5_mvrnormArma", (DL_FUNC) &_SMC5_mvrnormArma, 4},
-    {"_SMC5_rnormArma", (DL_FUNC) &_SMC5_rnormArma, 3},
-    {"_SMC5_logAddition", (DL_FUNC) &_SMC5_logAddition, 2},
-    {"_SMC5_logAdditionSum", (DL_FUNC) &_SMC5_logAdditionSum, 1},
-    {"_SMC5_ProbSampleReplace", (DL_FUNC) &_SMC5_ProbSampleReplace, 3},
-    {"_SMC5_checkDiagonal", (DL_FUNC) &_SMC5_checkDiagonal, 1},
-    {"_SMC5_checkSymmetric", (DL_FUNC) &_SMC5_checkSymmetric, 1},
+    {"SMC5_KalmanFilterCpp", (DL_FUNC) &SMC5_KalmanFilterCpp, 7},
+    {"SMC5_KalmanSmoothingCpp", (DL_FUNC) &SMC5_KalmanSmoothingCpp, 7},
+    {"SMC5_KalmanSamplerCpp", (DL_FUNC) &SMC5_KalmanSamplerCpp, 3},
+    {"SMC5_dmvnrmArma", (DL_FUNC) &SMC5_dmvnrmArma, 5},
+    {"SMC5_dnrmArma", (DL_FUNC) &SMC5_dnrmArma, 4},
+    {"SMC5_mvrnormArma", (DL_FUNC) &SMC5_mvrnormArma, 4},
+    {"SMC5_rnormArma", (DL_FUNC) &SMC5_rnormArma, 3},
+    {"SMC5_blockParticleFilter", (DL_FUNC) &SMC5_blockParticleFilter, 6},
+    {"SMC5_sequentialImportanceSampling", (DL_FUNC) &SMC5_sequentialImportanceSampling, 4},
+    {"SMC5_bootstrapParticleFilter", (DL_FUNC) &SMC5_bootstrapParticleFilter, 4},
+    {"SMC5_logAddition", (DL_FUNC) &SMC5_logAddition, 2},
+    {"SMC5_logAdditionSum", (DL_FUNC) &SMC5_logAdditionSum, 1},
+    {"SMC5_ProbSampleReplace", (DL_FUNC) &SMC5_ProbSampleReplace, 3},
+    {"SMC5_checkDiagonal", (DL_FUNC) &SMC5_checkDiagonal, 1},
+    {"SMC5_checkSymmetric", (DL_FUNC) &SMC5_checkSymmetric, 1},
     {NULL, NULL, 0}
 };
 
