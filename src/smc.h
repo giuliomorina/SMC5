@@ -12,5 +12,6 @@ void standardizeLogWeights(arma::cube&);
 void standardizeLogVector(arma::vec& );
 arma::uvec ProbSampleReplace(int, int, arma::vec);
 bool checkDiagonal(arma::mat&);
+bool checkSymmetric(arma::mat&);
 
 #endif

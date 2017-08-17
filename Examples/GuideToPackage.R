@@ -112,7 +112,7 @@ dataset <- generateData(n, A, X0, sigmaX, sigmaY)
 X_data <- dataset$X_data
 Y_data <- dataset$Y_data
 
-#Kalman filter
+#Kalman filter - notice that the first element is the one at time 0!
 kalmanFilterRes <- KalmanFilterCpp(m_0 = X0,
                                    C_0 = sigmaX,
                                    F_matrix = diag(dimension),
@@ -150,3 +150,54 @@ for(rep in 1:reps) {
 
 print(colMeans(res))
 print(X_data[time_smoothing,])
+
+##############################################################
+# SEQUENTIAL IMPORTANCE SAMPLING / BOOTSTRAP PARTICLE FILTER #
+##############################################################
+
+# Generate model
+rm(list=ls())
+dimension <- 10
+N <- 5 #Number of particles
+n <- 4 #Time horizon (filter is returned for all time steps except time 0)
+A <- generateA(c(0.5,0.2), dimension)
+X0 <- rep(0,dimension)
+sigmaX <- diag(rep(1,dimension))
+sigmaY <- diag(rep(1,dimension))
+dataset <- generateData(n, A, X0, sigmaX, sigmaY)
+
+# The algorithms requires these two lists:
+fParams <- list(A=A, X0=X0, sigmaX=sigmaX)
+gParams <- list(Y=dataset$Y_data, sigmaY=sigmaY)
+
+# Sequential Importance Sampling
+seqImpSampRes <- sequentialImportanceSampling(N=N, n=n, fParams = fParams,
+                                              gParams = gParams)
+#Notice that the weights are not standardized
+
+# Bootstrap Particle Filter
+bootstrapPFRes <- bootstrapParticleFilter(N=N, n=n, fParams = fParams,
+                                          gParams = gParams)
+
+###########################
+# BLOCKED PARTICLE FILTER #
+###########################
+
+#Blocked particle filter requires to define a list with all the blocks
+#within eachother there has to be the components of the variable in the block
+blocks <- list(1:3,c(4,8),5,c(6,7,9,10))
+#There is no need for the  blocks to have the same number of compoennts or for them
+#to be contiguous
+blockPFRes <- blockParticleFilter(N=N, n=n, blocks = blocks,
+                                  fParams = fParams, gParams = gParams)
+#The logweights are for each block
+
+#NOTE: The most convinent way to create contiguous block of equal cardinality is:
+card <- 3
+blocks2 <- split(1:dimension,ceiling((1:dimension)/card))
+print(blocks2)
+
+#########################
+# GIBBS PARTICLE FILTER #
+#########################
+

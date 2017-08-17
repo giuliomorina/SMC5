@@ -71,3 +71,8 @@ bool checkDiagonal(arma::mat& X) {
   }
   return(true);
 }
+
+// [[Rcpp::export]]
+bool checkSymmetric(arma::mat& X) {
+  return(approx_equal(trimatu(X),trimatl(X).t(),"absdiff", 0.002));
+}

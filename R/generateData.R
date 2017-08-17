@@ -26,8 +26,13 @@ generateY <- function(X_data, sigmaY) {
 }
 
 generateA <- function(neighbour_correlation, dimension) {
-  if((length(neighbour_correlation)*2-1) > dimension) stop("Dimension must be bigger.")
-  first_row <- c(neighbour_correlation,rep(0,dimension-length(neighbour_correlation)*2+1), rev(neighbour_correlation[-1]))
+  if((length(neighbour_correlation)*2-2) > dimension) stop("Dimension must be bigger.")
+  if(dimension == 1) return(matrix(neighbour_correlation, nrow=1, ncol=1))
+  if(length(neighbour_correlation)*2-2 == dimension) {
+    first_row <- neighbour_correlation
+  } else {
+    first_row <- c(neighbour_correlation,rep(0,dimension-length(neighbour_correlation)*2+1), rev(neighbour_correlation[-1]))
+  }
   A <- matrix(first_row, nrow=length(first_row), ncol=length(first_row), byrow = TRUE)
   for(i in 2:length(first_row)) {
     A[i,] <- shift(first_row,i-1)
