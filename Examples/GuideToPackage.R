@@ -238,6 +238,26 @@ gibbsPFRes <- gibbsParticleFilter(N=N, n=n, m=m, radius=radius,
 #Note that this function returns a list with particle and weihgts to be consistent
 #with all the other functions. Hoewver, the weights are the same for all the particles.
 
+#An online version is also available
+gibbsPFRes2 <- gibbsParticleFilterOnline(N=N, n=n_new, m=m, radius=radius,
+                                         particles = gibbsPFRes$filteringParticle,
+                                         fParams = fParams, gParams=gParams2)
+benchmark(gibbsParticleFilter(N=N, n=n_new, m=m, radius=radius,
+                              fParams = fParams, gParams=gParams2),
+          gibbsParticleFilterOnline(N=N, n=n_new, m=m, radius=radius,
+                                    particles = gibbsPFRes$filteringParticle,
+                                    fParams = fParams, gParams=gParams2))
+
+#There is an old implementation that still works but is slower and does not work
+#in an on-line fashion.
+gibbsPFResOld <- gibbsParticleFilterSMC4(N=N, n=n, m=m, radius=radius,
+                                         fParams = fParams, gParams=gParams)
+benchmark(gibbsParticleFilterSMC4(N=N, n=n, m=m, radius=radius,
+                                  fParams = fParams, gParams=gParams),
+          gibbsParticleFilter(N=N, n=n, m=m, radius=radius,
+                                  fParams = fParams, gParams=gParams))
+
+
 ############################
 # APPROXIMATING STATISTICS #
 ############################

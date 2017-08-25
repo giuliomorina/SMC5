@@ -16,7 +16,7 @@ set.seed(88,"L'Ecuyer-CMRG")
 n <- 1 #Filter time
 possible_dimension <- 3:25 #Possible dimensions. Need to be contiguous and start from 1!
 ncores <- 2
-repetitions <- 100
+repetitions <- 10
 N <- 20 #Number of particles
 A_diag <- 1 #Elements on the diagonal of A
 varX <- 1 #Variance of sigmaX
@@ -67,6 +67,7 @@ expRes <- lapply(possible_dimension, function(dimension) {
                                                fParams = fParams, gParams=gParams),
                 KalmanRes = list(filteringParticle = kalmanParticles,
                                  filteringLogWeights = array(log(1/N),c(n,1,N))),
+                Y_data = Y_data,
                 blocks = blocks))
 
   }, mc.cores = ncores)
@@ -74,6 +75,14 @@ expRes <- lapply(possible_dimension, function(dimension) {
          res = res,
          dimension = dimension))
 })
+
+########################
+# SAVE (ON THE SERVER) #
+########################
+if(Sys.info()["nodename"] == "greyplover.stats.ox.ac.uk" || Sys.info()["nodename"] == "greypartridge.stats.ox.ac.uk" ||
+   Sys.info()["nodename"] == "greyheron.stats.ox.ac.uk" || Sys.info()["nodename"] == "greywagtail.stats.ox.ac.uk") {
+  saveRDS(expRes, file = paste0("curse_of_dimensionality_",sample(1e7,size = 1),".RDS"))
+}
 
 #########################
 # APPROXIMATE STATISTIC #
