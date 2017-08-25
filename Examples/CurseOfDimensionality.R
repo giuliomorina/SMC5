@@ -12,7 +12,7 @@ require(ggplot2)
 ######################
 # SETTING EXPERIMENT #
 ######################
-set.seed(88,"L'Ecuyer-CMRG")
+#set.seed(88,"L'Ecuyer-CMRG")
 n <- 1 #Filter time
 possible_dimension <- 3:25 #Possible dimensions. Need to be contiguous and start from 1!
 ncores <- 2
@@ -145,6 +145,12 @@ dfRes <- computeDfBiasVar(approxStatisticPF = approxStatisticGibbsPF, trueStatis
                           algorithmName = "GibbsPF", dependentVarName = "Dimension", dfRes = dfRes)
 dfRes <- computeDfBiasVar(approxStatisticPF = approxStatisticKalman, trueStatistics = trueStatistics,
                           algorithmName = "Kalman", dependentVarName = "Dimension", dfRes = dfRes)
+
+
+if(Sys.info()["nodename"] == "greyplover.stats.ox.ac.uk" || Sys.info()["nodename"] == "greypartridge.stats.ox.ac.uk" ||
+   Sys.info()["nodename"] == "greyheron.stats.ox.ac.uk" || Sys.info()["nodename"] == "greywagtail.stats.ox.ac.uk") {
+  saveRDS(dfRes, file = paste0("curse_of_dimensionality_res_",sample(1e7,size = 1),".RDS"))
+}
 
 ########
 # PLOT #
