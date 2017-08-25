@@ -16,8 +16,9 @@ double gDensityLog(double currentX, double Y, double var) {
 }
 
 // [[Rcpp::export]]
-List blockParticleFilter(int N, int n, List blocks, List fParams, List gParams,
-                         bool resampling = true) {
+List blockParticleFilterOnline(int N, int n, arma::cube& particles, arma::cube& logWeights,
+                               List blocks, List fParams, List gParams,
+                               bool resampling = true, bool init = false) {
   //Unroll fParams and gParams
   arma::mat A = fParams["A"];
   arma::rowvec X0 = fParams["X0"];
@@ -38,21 +39,23 @@ List blockParticleFilter(int N, int n, List blocks, List fParams, List gParams,
   }
   //Set up variables
   int dimension = A.n_rows;
-  arma::cube results_array(n+1, dimension, N, fill::zeros); //n+1 because we start from time zero
-  arma::cube log_weights(n+1, number_blocks, N, fill::ones);
-  log_weights *= log(1.0/N); //Fill all with equal weight
-  //Fill the first time with X0 for all particles and same weights for everything
-  arma::rowvec ones(dimension,fill::ones);
-  for(int particle = 0; particle < N; particle++) {
-    results_array.slice(particle).row(0) = X0;
+  int time_matrix = n;
+  if(init) {
+    time_matrix = n+1; //It's starting from time zero so we need one more
   }
+  arma::cube results_array(time_matrix, dimension, N, fill::zeros); //n+1 because we start from time zero
+  arma::cube log_weights(time_matrix, number_blocks, N, fill::ones);
+  //Fill up with the already provided results
+  results_array.subcube(0,0,0,particles.n_rows-1,dimension-1,N-1) = particles;
+  log_weights.subcube(0,0,0,logWeights.n_rows-1,number_blocks-1,N-1) = logWeights;
+
   //Auxiliary variable
   arma::mat resampled_particles(dimension,N);
   arma::colvec current_log_weights(N);
   arma::uvec which_sampled(N);
 
   //Main loop
-  for(int t=1; t < n+1; t++) { //Iterating over time
+  for(int t=particles.n_rows; t < time_matrix; t++) { //Iterating over time
     //RESAMPLING STEP
     //For each block resample the particle
     for(int b=0; b<number_blocks;b++) {
@@ -71,11 +74,9 @@ List blockParticleFilter(int N, int n, List blocks, List fParams, List gParams,
         }
       }
     }
-
     for(int i=0; i<N; i++) {
       //PROPAGATE PARTICLE
       results_array.slice(i).row(t) = fSample(resampled_particles.col(i).t(), A, sigmaX);
-
       //CORRECT ITS WEIGHT
       for(int b=0; b<number_blocks; b++) {
         log_weights(t, b, i) = 0.0; // reset
@@ -93,11 +94,43 @@ List blockParticleFilter(int N, int n, List blocks, List fParams, List gParams,
 
   }
 
-  arma::cube results_array_res = results_array.subcube(1,0,0,n,dimension-1,N-1); //Remove time 0
-  arma::cube log_weights_res = log_weights.subcube(1,0,0,n,number_blocks-1,N-1); //Remove time 0
+  if(init) {
+    arma::cube results_array_res = results_array.subcube(1,0,0,n,dimension-1,N-1); //Remove time 0
+    arma::cube log_weights_res = log_weights.subcube(1,0,0,n,number_blocks-1,N-1); //Remove time 0
+    return(List::create(Named("filteringParticle") = results_array_res,
+                        Named("filteringLogWeights") = log_weights_res));
+  } else {
+    return(List::create(Named("filteringParticle") = results_array,
+                        Named("filteringLogWeights") = log_weights));
+  }
 
-  return(List::create(Named("filteringParticle") = results_array_res,
-                      Named("filteringLogWeights") = log_weights_res));
+}
+
+// [[Rcpp::export]]
+List blockParticleFilter(int N, int n, List blocks, List fParams, List gParams,
+                         bool resampling = true) {
+  //Unroll fParams and gParams
+  arma::mat A = fParams["A"];
+  arma::rowvec X0 = fParams["X0"];
+  arma::mat sigmaX = fParams["sigmaX"];
+  arma::mat Y = gParams["Y"];
+  arma::mat sigmaY = gParams["sigmaY"];
+  //Check
+  if(!checkDiagonal(sigmaX)) stop("sigmaX must be diagonal");
+  if(!checkDiagonal(sigmaY)) stop("sigmaY must be diagonal");
+  if(!checkSymmetric(A)) stop("A must be symmetric.");
+  //Set up variables
+  int dimension = A.n_rows;
+  arma::cube particles(1, dimension, N, fill::zeros);
+  arma::cube log_weights(1, blocks.size(), N, fill::ones);
+  log_weights *= log(1.0/N); //Fill all with equal weight
+  //Fill the first time with X0 for all particles and same weights for everything
+  arma::rowvec ones(dimension,fill::ones);
+  for(int p = 0; p < N; p++) {
+    particles.slice(p).row(0) = X0;
+  }
+  return(blockParticleFilterOnline(N,n,particles,log_weights,
+                                   blocks,fParams,gParams,resampling,true));
 }
 
 // [[Rcpp::export]]
@@ -109,9 +142,27 @@ List sequentialImportanceSampling(int N, int n, List fParams, List gParams) {
 }
 
 // [[Rcpp::export]]
+List sequentialImportanceSamplingOnline(int N, int n, arma::cube& particles, arma::cube& logWeights,
+                                        List fParams, List gParams) {
+  arma::mat A = fParams["A"];
+  int dimension = A.n_rows;
+  List blocks = List::create(linspace(1,dimension,dimension).t());
+  return(blockParticleFilterOnline(N,n,particles,logWeights,blocks,fParams,gParams,false, false));
+}
+
+// [[Rcpp::export]]
 List bootstrapParticleFilter(int N, int n, List fParams, List gParams) {
   arma::mat A = fParams["A"];
   int dimension = A.n_rows;
   List blocks = List::create(linspace(1,dimension,dimension).t());
   return(blockParticleFilter(N,n,blocks,fParams,gParams,true));
+}
+
+// [[Rcpp::export]]
+List bootstrapParticleFilterOnline(int N, int n, arma::cube& particles, arma::cube& logWeights,
+                                   List fParams, List gParams) {
+  arma::mat A = fParams["A"];
+  int dimension = A.n_rows;
+  List blocks = List::create(linspace(1,dimension,dimension).t());
+  return(blockParticleFilterOnline(N,n,particles,logWeights,blocks,fParams,gParams,true,false));
 }

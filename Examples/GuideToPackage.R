@@ -179,6 +179,33 @@ seqImpSampRes <- sequentialImportanceSampling(N=N, n=n, fParams = fParams,
 bootstrapPFRes <- bootstrapParticleFilter(N=N, n=n, fParams = fParams,
                                           gParams = gParams)
 
+# ONLINE: There is also a function that allows for an online version of
+# the algorithms
+
+#Generate new additional data
+n_new <- 2*n
+dataset2 <- generateData(n_new-n, A, dataset$X_data[nrow(dataset$X_data),], sigmaX, sigmaY)
+
+gParams2 <- list(Y=rbind(dataset$Y_data,dataset2$Y_data), sigmaY=sigmaY)
+seqImpSampRes2 <- sequentialImportanceSamplingOnline(N=N, n=n_new,
+                                                    particles = seqImpSampRes$filteringParticle,
+                                                    logWeights = seqImpSampRes$filteringLogWeights,
+                                                    fParams = fParams,
+                                                    gParams = gParams2)
+bootstrapPFRes2 <- bootstrapParticleFilterOnline(N=N, n=n_new,
+                                                     particles = seqImpSampRes$filteringParticle,
+                                                     logWeights = seqImpSampRes$filteringLogWeights,
+                                                     fParams = fParams,
+                                                     gParams = gParams2)
+
+benchmark(bootstrapParticleFilterOnline(N=N, n=n_new,
+                                        particles = seqImpSampRes$filteringParticle,
+                                        logWeights = seqImpSampRes$filteringLogWeights,
+                                        fParams = fParams,
+                                        gParams = gParams2),
+          bootstrapParticleFilter(N=N, n=n_new, fParams = fParams,
+                                  gParams = gParams2), replications = 1000)
+
 ###########################
 # BLOCKED PARTICLE FILTER #
 ###########################
@@ -200,6 +227,16 @@ print(blocks2)
 #########################
 # GIBBS PARTICLE FILTER #
 #########################
+
+# Gibbs particle filter requires to define a number m of sweeps+
+# as well as a radius
+m <- 100
+radius <- 1
+
+gibbsPFRes <- gibbsParticleFilter(N=N, n=n, m=m, radius=radius,
+                                  fParams = fParams, gParams=gParams)
+#Note that this function returns a list with particle and weihgts to be consistent
+#with all the other functions. Hoewver, the weights are the same for all the particles.
 
 ############################
 # APPROXIMATING STATISTICS #
@@ -256,7 +293,24 @@ approxStatisticBlock <-  list(meanStatistic = computeApproxStatisticFilter(parti
                               sumSquaredStatistic = computeApproxStatisticFilter(particles = blockPFRes$filteringParticle,
                                                                            logWeights = blockPFRes$filteringLogWeights,
                                                                            n = 2, blocks = blocks, type = "sum_squared"))
+approxStatisticGibbsPF <-  list(meanStatistic = computeApproxStatisticFilter(particles = gibbsPFRes$filteringParticle,
+                                                                           logWeights = gibbsPFRes$filteringLogWeights,
+                                                                           n = 2, type = "mean", comp = 3),
+                              sumStatistic = computeApproxStatisticFilter(particles = gibbsPFRes$filteringParticle,
+                                                                          logWeights = gibbsPFRes$filteringLogWeights,
+                                                                          n = 2, type = "sum"),
+                              meanSquaredStatistic = computeApproxStatisticFilter(particles = gibbsPFRes$filteringParticle,
+                                                                                  logWeights = gibbsPFRes$filteringLogWeights,
+                                                                                  n = 2, type = "mean_squared", comp = 3),
+                              sumSquaredStatistic = computeApproxStatisticFilter(particles = gibbsPFRes$filteringParticle,
+                                                                                 logWeights = gibbsPFRes$filteringLogWeights,
+                                                                                 n = 2, type = "sum_squared"))
 print(trueStatistics)
 print(approxStatisticKalman)
 print(approxStatisticsBootstrap)
 print(approxStatisticBlock)
+print(approxStatisticGibbsPF)
+
+# The function computeDfBiasVar can also be used to quickly generate a dataset with bias/var/MSE and other
+# information of the estimator obtained through several replications. See CurseOfTime.R or CurseOfDimensionality.R
+# to see how it is used.

@@ -76,3 +76,8 @@ bool checkDiagonal(arma::mat& X) {
 bool checkSymmetric(arma::mat& X) {
   return(approx_equal(trimatu(X),trimatl(X).t(),"absdiff", 0.002));
 }
+
+int modulo(int a, int b) {
+  const int result = a % b;
+  return result >= 0 ? result : result + b;
+}

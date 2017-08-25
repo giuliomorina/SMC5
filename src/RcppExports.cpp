@@ -109,6 +109,25 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// blockParticleFilterOnline
+List blockParticleFilterOnline(int N, int n, arma::cube& particles, arma::cube& logWeights, List blocks, List fParams, List gParams, bool resampling, bool init);
+RcppExport SEXP SMC5_blockParticleFilterOnline(SEXP NSEXP, SEXP nSEXP, SEXP particlesSEXP, SEXP logWeightsSEXP, SEXP blocksSEXP, SEXP fParamsSEXP, SEXP gParamsSEXP, SEXP resamplingSEXP, SEXP initSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type N(NSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< arma::cube& >::type particles(particlesSEXP);
+    Rcpp::traits::input_parameter< arma::cube& >::type logWeights(logWeightsSEXP);
+    Rcpp::traits::input_parameter< List >::type blocks(blocksSEXP);
+    Rcpp::traits::input_parameter< List >::type fParams(fParamsSEXP);
+    Rcpp::traits::input_parameter< List >::type gParams(gParamsSEXP);
+    Rcpp::traits::input_parameter< bool >::type resampling(resamplingSEXP);
+    Rcpp::traits::input_parameter< bool >::type init(initSEXP);
+    rcpp_result_gen = Rcpp::wrap(blockParticleFilterOnline(N, n, particles, logWeights, blocks, fParams, gParams, resampling, init));
+    return rcpp_result_gen;
+END_RCPP
+}
 // blockParticleFilter
 List blockParticleFilter(int N, int n, List blocks, List fParams, List gParams, bool resampling);
 RcppExport SEXP SMC5_blockParticleFilter(SEXP NSEXP, SEXP nSEXP, SEXP blocksSEXP, SEXP fParamsSEXP, SEXP gParamsSEXP, SEXP resamplingSEXP) {
@@ -139,6 +158,22 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// sequentialImportanceSamplingOnline
+List sequentialImportanceSamplingOnline(int N, int n, arma::cube& particles, arma::cube& logWeights, List fParams, List gParams);
+RcppExport SEXP SMC5_sequentialImportanceSamplingOnline(SEXP NSEXP, SEXP nSEXP, SEXP particlesSEXP, SEXP logWeightsSEXP, SEXP fParamsSEXP, SEXP gParamsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type N(NSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< arma::cube& >::type particles(particlesSEXP);
+    Rcpp::traits::input_parameter< arma::cube& >::type logWeights(logWeightsSEXP);
+    Rcpp::traits::input_parameter< List >::type fParams(fParamsSEXP);
+    Rcpp::traits::input_parameter< List >::type gParams(gParamsSEXP);
+    rcpp_result_gen = Rcpp::wrap(sequentialImportanceSamplingOnline(N, n, particles, logWeights, fParams, gParams));
+    return rcpp_result_gen;
+END_RCPP
+}
 // bootstrapParticleFilter
 List bootstrapParticleFilter(int N, int n, List fParams, List gParams);
 RcppExport SEXP SMC5_bootstrapParticleFilter(SEXP NSEXP, SEXP nSEXP, SEXP fParamsSEXP, SEXP gParamsSEXP) {
@@ -150,6 +185,85 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< List >::type fParams(fParamsSEXP);
     Rcpp::traits::input_parameter< List >::type gParams(gParamsSEXP);
     rcpp_result_gen = Rcpp::wrap(bootstrapParticleFilter(N, n, fParams, gParams));
+    return rcpp_result_gen;
+END_RCPP
+}
+// bootstrapParticleFilterOnline
+List bootstrapParticleFilterOnline(int N, int n, arma::cube& particles, arma::cube& logWeights, List fParams, List gParams);
+RcppExport SEXP SMC5_bootstrapParticleFilterOnline(SEXP NSEXP, SEXP nSEXP, SEXP particlesSEXP, SEXP logWeightsSEXP, SEXP fParamsSEXP, SEXP gParamsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type N(NSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< arma::cube& >::type particles(particlesSEXP);
+    Rcpp::traits::input_parameter< arma::cube& >::type logWeights(logWeightsSEXP);
+    Rcpp::traits::input_parameter< List >::type fParams(fParamsSEXP);
+    Rcpp::traits::input_parameter< List >::type gParams(gParamsSEXP);
+    rcpp_result_gen = Rcpp::wrap(bootstrapParticleFilterOnline(N, n, particles, logWeights, fParams, gParams));
+    return rcpp_result_gen;
+END_RCPP
+}
+// gibbsParticleFilterOnline
+List gibbsParticleFilterOnline(int N, int n, int m, int radius, arma::cube& particles, List fParams, List gParams, bool init);
+RcppExport SEXP SMC5_gibbsParticleFilterOnline(SEXP NSEXP, SEXP nSEXP, SEXP mSEXP, SEXP radiusSEXP, SEXP particlesSEXP, SEXP fParamsSEXP, SEXP gParamsSEXP, SEXP initSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type N(NSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< int >::type m(mSEXP);
+    Rcpp::traits::input_parameter< int >::type radius(radiusSEXP);
+    Rcpp::traits::input_parameter< arma::cube& >::type particles(particlesSEXP);
+    Rcpp::traits::input_parameter< List >::type fParams(fParamsSEXP);
+    Rcpp::traits::input_parameter< List >::type gParams(gParamsSEXP);
+    Rcpp::traits::input_parameter< bool >::type init(initSEXP);
+    rcpp_result_gen = Rcpp::wrap(gibbsParticleFilterOnline(N, n, m, radius, particles, fParams, gParams, init));
+    return rcpp_result_gen;
+END_RCPP
+}
+// gibbsParticleFilter
+List gibbsParticleFilter(int N, int n, int m, int radius, List fParams, List gParams);
+RcppExport SEXP SMC5_gibbsParticleFilter(SEXP NSEXP, SEXP nSEXP, SEXP mSEXP, SEXP radiusSEXP, SEXP fParamsSEXP, SEXP gParamsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type N(NSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< int >::type m(mSEXP);
+    Rcpp::traits::input_parameter< int >::type radius(radiusSEXP);
+    Rcpp::traits::input_parameter< List >::type fParams(fParamsSEXP);
+    Rcpp::traits::input_parameter< List >::type gParams(gParamsSEXP);
+    rcpp_result_gen = Rcpp::wrap(gibbsParticleFilter(N, n, m, radius, fParams, gParams));
+    return rcpp_result_gen;
+END_RCPP
+}
+// neighbourSMC4
+arma::uvec neighbourSMC4(int component, int radius, int dimension);
+RcppExport SEXP SMC5_neighbourSMC4(SEXP componentSEXP, SEXP radiusSEXP, SEXP dimensionSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type component(componentSEXP);
+    Rcpp::traits::input_parameter< int >::type radius(radiusSEXP);
+    Rcpp::traits::input_parameter< int >::type dimension(dimensionSEXP);
+    rcpp_result_gen = Rcpp::wrap(neighbourSMC4(component, radius, dimension));
+    return rcpp_result_gen;
+END_RCPP
+}
+// gibbsParticleFilterSMC4
+List gibbsParticleFilterSMC4(int N, int n, int m, int radius, List fParams, List gParams);
+RcppExport SEXP SMC5_gibbsParticleFilterSMC4(SEXP NSEXP, SEXP nSEXP, SEXP mSEXP, SEXP radiusSEXP, SEXP fParamsSEXP, SEXP gParamsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type N(NSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< int >::type m(mSEXP);
+    Rcpp::traits::input_parameter< int >::type radius(radiusSEXP);
+    Rcpp::traits::input_parameter< List >::type fParams(fParamsSEXP);
+    Rcpp::traits::input_parameter< List >::type gParams(gParamsSEXP);
+    rcpp_result_gen = Rcpp::wrap(gibbsParticleFilterSMC4(N, n, m, radius, fParams, gParams));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -220,9 +334,16 @@ static const R_CallMethodDef CallEntries[] = {
     {"SMC5_dnrmArma", (DL_FUNC) &SMC5_dnrmArma, 4},
     {"SMC5_mvrnormArma", (DL_FUNC) &SMC5_mvrnormArma, 4},
     {"SMC5_rnormArma", (DL_FUNC) &SMC5_rnormArma, 3},
+    {"SMC5_blockParticleFilterOnline", (DL_FUNC) &SMC5_blockParticleFilterOnline, 9},
     {"SMC5_blockParticleFilter", (DL_FUNC) &SMC5_blockParticleFilter, 6},
     {"SMC5_sequentialImportanceSampling", (DL_FUNC) &SMC5_sequentialImportanceSampling, 4},
+    {"SMC5_sequentialImportanceSamplingOnline", (DL_FUNC) &SMC5_sequentialImportanceSamplingOnline, 6},
     {"SMC5_bootstrapParticleFilter", (DL_FUNC) &SMC5_bootstrapParticleFilter, 4},
+    {"SMC5_bootstrapParticleFilterOnline", (DL_FUNC) &SMC5_bootstrapParticleFilterOnline, 6},
+    {"SMC5_gibbsParticleFilterOnline", (DL_FUNC) &SMC5_gibbsParticleFilterOnline, 8},
+    {"SMC5_gibbsParticleFilter", (DL_FUNC) &SMC5_gibbsParticleFilter, 6},
+    {"SMC5_neighbourSMC4", (DL_FUNC) &SMC5_neighbourSMC4, 3},
+    {"SMC5_gibbsParticleFilterSMC4", (DL_FUNC) &SMC5_gibbsParticleFilterSMC4, 6},
     {"SMC5_logAddition", (DL_FUNC) &SMC5_logAddition, 2},
     {"SMC5_logAdditionSum", (DL_FUNC) &SMC5_logAdditionSum, 1},
     {"SMC5_ProbSampleReplace", (DL_FUNC) &SMC5_ProbSampleReplace, 3},

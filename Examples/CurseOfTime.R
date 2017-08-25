@@ -14,9 +14,9 @@ require(ggplot2)
 
 set.seed(1717)
 n <- 50
-ncores <- detectCores()
+ncores <- 2
 repetitions <- 10000
-N <- 50
+N <- 20
 type_statistic <- "sum_squared"
 comp_statistic <- NA #Used for type_statistic mean or mean_squared
 
@@ -52,7 +52,7 @@ expRes <- mclapply(1:repetitions, function(rep) {
                                                     gParams = gParams),
               SIRRes = bootstrapParticleFilter(N=N, n=n, fParams = fParams,
                                                gParams = gParams)))
-}, mc.cores = detectCores())
+}, mc.cores = ncores)
 
 #########################
 # APPROXIMATE STATISTIC #
@@ -83,64 +83,59 @@ for(time in 1:n) {
 # COMPUTE BIAS/MSE/VAR #
 ########################
 
-dfRes <- data.frame(Algorithm = character(),
-                    Time = double(),
-                    Type = character(),
-                    Value = double(),
-                    stringsAsFactors = FALSE)
-for(time in 1:n) {
-  estSIS <- list(Bias = mean(approxStatisticSIS[time,]-trueStatistic[time]),
-              Var = mean((approxStatisticSIS[time,]-mean(approxStatisticSIS[time,]))^2),
-              CoefVar = sd(approxStatisticSIS[time,])/mean(approxStatisticSIS[time,]),
-              RelVar = var(approxStatisticSIS[time,])/abs(mean(approxStatisticSIS[time,])), #http://www.statisticshowto.com/relative-variance/
-              RelVar2 = (sd(approxStatisticSIS[time,])/mean(approxStatisticSIS[time,]))^2,
-              MSE = mean((approxStatisticSIS[time,]-trueStatistic[time])^2),
-              RMSE = sqrt(mean((approxStatisticSIS[time,]-trueStatistic[time])^2)))
-  estSIR <- list(Bias = mean(approxStatisticSIR[time,]-trueStatistic[time]),
-                 Var = mean((approxStatisticSIR[time,]-mean(approxStatisticSIR[time,]))^2),
-                 CoefVar = sd(approxStatisticSIR[time,])/mean(approxStatisticSIR[time,]),
-                 RelVar = var(approxStatisticSIR[time,])/abs(mean(approxStatisticSIR[time,])),
-                 RelVar2 = (sd(approxStatisticSIR[time,])/mean(approxStatisticSIR[time,]))^2,
-                 MSE = mean((approxStatisticSIR[time,]-trueStatistic[time])^2),
-                 RMSE = sqrt(mean((approxStatisticSIR[time,]-trueStatistic[time])^2)))
-  for(type in c("Bias","Var", "CoefVar", "RelVar", "RelVar2", "MSE","RMSE")) {
-    dfRes <- rbind(dfRes, c(Algorithm = "SIS",
-                            Time = time,
-                            Type = type,
-                            Value = estSIS[[type]]),
-                   stringsAsFactors = FALSE)
-    dfRes <- rbind(dfRes, c(Algorithm = "SIR",
-                            Time = time,
-                            Type = type,
-                            Value = estSIR[[type]]),
-                   stringsAsFactors = FALSE)
+dfRes <- computeDfBiasVar(approxStatisticPF = approxStatisticSIS, trueStatistics = trueStatistic,
+                           algorithmName = "SIS", dependentVarName = "Time")
+dfRes <- computeDfBiasVar(approxStatisticPF = approxStatisticSIR, trueStatistics = trueStatistic,
+                           algorithmName = "SIR", dependentVarName = "Time", dfRes = dfRes)
+
+########################
+# MEAN MAXIMUM WEIGHTS #
+########################
+
+maxWeightSIS <- matrix(NA, nrow=n, ncol=repetitions)
+maxWeightSIR <- matrix(NA, nrow=n, ncol=repetitions)
+for(rep in 1:repetitions) {
+  res <- expRes[[rep]]
+  for(time in 1:n) {
+    maxWeightSIS[time,rep] <- max(exp(res$SISRes$filteringLogWeights[time,1,]-logAdditionSum(res$SISRes$filteringLogWeights[time,1,])))
+    maxWeightSIR[time,rep] <- max(exp(res$SIRRes$filteringLogWeights[time,1,]-logAdditionSum(res$SIRRes$filteringLogWeights[time,1,])))
   }
 }
-colnames(dfRes) <- c("Algorithm", "Time", "Type", "Value")
-#Other relative variance (Definition 2) of http://www.statisticshowto.com/relative-variance/
+
+dfWeights <- data.frame(Algorithm = character(),
+                        Time = numeric(),
+                        Value = numeric(),
+                        stringsAsFactors = FALSE)
 for(time in 1:n) {
-  variances <- as.numeric(dfRes[dfRes$Algorithm == "SIS" & dfRes$Type=="Var","Value"])
-  dfRes <- rbind(dfRes, c(Algorithm = "SIS",
-                          Time = time,
-                          Type = "RelVar3",
-                          Value = as.numeric(dfRes[dfRes$Algorithm == "SIS" &
-                                                                    dfRes$Type=="Var" &
-                                                                    dfRes$Time == time,"Value"])/sum(variances)),
-                 stringsAsFactors = FALSE)
-  dfRes <- rbind(dfRes, c(Algorithm = "SIR",
-                          Time = time,
-                          Type = "RelVar3",
-                          Value = as.numeric(dfRes[dfRes$Algorithm == "SIR" &
-                                                     dfRes$Type=="Var" &
-                                                     dfRes$Time == time,"Value"])/sum(variances)),
-                 stringsAsFactors = FALSE)
+  dfWeights <- rbind(dfWeights,c(Algorithm = "SIS",
+                                 Time = time,
+                                 Value = mean(maxWeightSIS[time,])),
+                     stringsAsFactors = FALSE)
+  dfWeights <- rbind(dfWeights,c(Algorithm = "SIR",
+                                 Time = time,
+                                 Value = mean(maxWeightSIR[time,])),
+                     stringsAsFactors = FALSE)
 }
+colnames(dfWeights) <- c("Algorithm","Time","Value")
+dfWeights$Algorithm <- as.factor(dfWeights$Algorithm)
 
 ########
 # PLOT #
 ########
 
+#Variance
+#Just to check the different type of relative variances:
 ggplot(dfRes[dfRes$Type != "Var" & dfRes$Type != "MSE" &
-               dfRes$Type != "Bias" & dfRes$Type != "RMSE",], aes(x = as.numeric(Time), y=as.numeric(Value), group=interaction(Algorithm,Type),
+               dfRes$Type != "Bias" & dfRes$Type != "RMSE" &
+               dfRes$Type != "RelAbsBias",], aes(x = as.numeric(Time), y=as.numeric(Value), group=interaction(Algorithm,Type),
                     linetype = Algorithm, color = Type)) + geom_line()
 
+#RelVar
+ggplot(dfRes[dfRes$Type == "RelVar",], aes(x = as.numeric(Time), y=as.numeric(Value), color = Algorithm)) +
+  geom_line(size = 1.2) +  scale_colour_brewer(palette = "Set1")
+
+
+#Maximum Weights
+ggplot(dfWeights, aes(x=as.numeric(Time), y=as.numeric(Value), color=Algorithm)) +
+  geom_line(size = 1.2) + geom_hline(yintercept = 1, linetype="dashed") +
+  scale_colour_brewer(palette = "Set1")

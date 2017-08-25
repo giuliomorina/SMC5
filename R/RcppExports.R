@@ -52,6 +52,10 @@ rnormArma <- function(n, mean, sigma) {
     .Call('SMC5_rnormArma', PACKAGE = 'SMC5', n, mean, sigma)
 }
 
+blockParticleFilterOnline <- function(N, n, particles, logWeights, blocks, fParams, gParams, resampling = TRUE, init = FALSE) {
+    .Call('SMC5_blockParticleFilterOnline', PACKAGE = 'SMC5', N, n, particles, logWeights, blocks, fParams, gParams, resampling, init)
+}
+
 blockParticleFilter <- function(N, n, blocks, fParams, gParams, resampling = TRUE) {
     .Call('SMC5_blockParticleFilter', PACKAGE = 'SMC5', N, n, blocks, fParams, gParams, resampling)
 }
@@ -60,8 +64,32 @@ sequentialImportanceSampling <- function(N, n, fParams, gParams) {
     .Call('SMC5_sequentialImportanceSampling', PACKAGE = 'SMC5', N, n, fParams, gParams)
 }
 
+sequentialImportanceSamplingOnline <- function(N, n, particles, logWeights, fParams, gParams) {
+    .Call('SMC5_sequentialImportanceSamplingOnline', PACKAGE = 'SMC5', N, n, particles, logWeights, fParams, gParams)
+}
+
 bootstrapParticleFilter <- function(N, n, fParams, gParams) {
     .Call('SMC5_bootstrapParticleFilter', PACKAGE = 'SMC5', N, n, fParams, gParams)
+}
+
+bootstrapParticleFilterOnline <- function(N, n, particles, logWeights, fParams, gParams) {
+    .Call('SMC5_bootstrapParticleFilterOnline', PACKAGE = 'SMC5', N, n, particles, logWeights, fParams, gParams)
+}
+
+gibbsParticleFilterOnline <- function(N, n, m, radius, particles, fParams, gParams, init = FALSE) {
+    .Call('SMC5_gibbsParticleFilterOnline', PACKAGE = 'SMC5', N, n, m, radius, particles, fParams, gParams, init)
+}
+
+gibbsParticleFilter <- function(N, n, m, radius, fParams, gParams) {
+    .Call('SMC5_gibbsParticleFilter', PACKAGE = 'SMC5', N, n, m, radius, fParams, gParams)
+}
+
+neighbourSMC4 <- function(component, radius, dimension) {
+    .Call('SMC5_neighbourSMC4', PACKAGE = 'SMC5', component, radius, dimension)
+}
+
+gibbsParticleFilterSMC4 <- function(N, n, m, radius, fParams, gParams) {
+    .Call('SMC5_gibbsParticleFilterSMC4', PACKAGE = 'SMC5', N, n, m, radius, fParams, gParams)
 }
 
 logAddition <- function(x, y) {

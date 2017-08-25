@@ -13,5 +13,10 @@ void standardizeLogVector(arma::vec& );
 arma::uvec ProbSampleReplace(int, int, arma::vec);
 bool checkDiagonal(arma::mat&);
 bool checkSymmetric(arma::mat&);
+int modulo(int,int);
+double fDensityComponent(arma::rowvec& , arma::rowvec& , int& ,  arma::mat& , arma::mat& , arma::uvec& );
+double fgSampleComponent(arma::rowvec& , arma::rowvec , int& , arma::mat& , arma::mat& , arma::mat& );
+double fgScaleFactorComponent(arma::rowvec& , arma::rowvec , int& , arma::mat& , arma::mat& , arma::mat& );
+arma::uvec neighbourSMC4(int, int, int);
 
 #endif
