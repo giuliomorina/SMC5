@@ -80,7 +80,10 @@ computeApproxStatisticFilter <- function(particles, logWeights, n, blocks = NULL
 }
 
 computeDfBiasVar <- function(approxStatisticPF, trueStatistics, algorithmName, dependentVarName, dfRes = NULL) {
-  if(nrow(approxStatisticPF) != length(trueStatistics)) {
+  if(is.vector(trueStatistics)) {
+    trueStatistics <- matrix(trueStatistics, nrow = nrow(approxStatisticPF), ncol = ncol(approxStatisticPF), byrow = FALSE)
+  }
+  if(nrow(approxStatisticPF) != nrow(trueStatistics)) {
     stop("Incompatible dimensions.")
   }
   if(is.null(dfRes)) {
@@ -90,16 +93,16 @@ computeDfBiasVar <- function(approxStatisticPF, trueStatistics, algorithmName, d
                         Value = double(),
                         stringsAsFactors = FALSE)
   }
-  for(i in 1:length(trueStatistics)) {
-    estAll <- list(Bias = mean(approxStatisticPF[i,]-trueStatistics[i]),
-                   RelAbsBias = mean(abs((approxStatisticPF[i,]-trueStatistics[i])/trueStatistics[i])),
+  for(i in 1:nrow(trueStatistics)) {
+    estAll <- list(Bias = mean(approxStatisticPF[i,]-trueStatistics[i,]),
+                   RelAbsBias = mean(abs((approxStatisticPF[i,]-trueStatistics[i,])/trueStatistics[i,])),
                    Var = mean((approxStatisticPF[i,]-mean(approxStatisticPF[i,]))^2),
                    CoefVar = sd(approxStatisticPF[i,])/mean(approxStatisticPF[i,]),
                    RelVar = var(approxStatisticPF[i,])/abs(mean(approxStatisticPF[i,])), #http://www.statisticshowto.com/relative-variance/
                    RelVar2 = (sd(approxStatisticPF[i,])/mean(approxStatisticPF[i,]))^2,
                    RelVar4 = var(approxStatisticPF[i,])/abs(mean(trueStatistics[i])), #A little modification I made from RelVar
-                   MSE = mean((approxStatisticPF[i,]-trueStatistics[i])^2),
-                   RMSE = sqrt(mean((approxStatisticPF[i,]-trueStatistics[i])^2)))
+                   MSE = mean((approxStatisticPF[i,]-trueStatistics[i,])^2),
+                   RMSE = sqrt(mean((approxStatisticPF[i,]-trueStatistics[i,])^2)))
     for(type in c("Bias", "RelAbsBias","Var", "CoefVar", "RelVar", "RelVar2", "RelVar4", "MSE","RMSE")) {
       dfRes <- rbind(dfRes, c(Algorithm = algorithmName,
                               Time = i,
@@ -110,7 +113,7 @@ computeDfBiasVar <- function(approxStatisticPF, trueStatistics, algorithmName, d
   }
   colnames(dfRes) <- c("Algorithm", "Time", "Type", "Value")
   #Other relative variance (Definition 2) of http://www.statisticshowto.com/relative-variance/
-  for(i in 1:length(trueStatistics)) {
+  for(i in 1:nrow(trueStatistics)) {
     variances <- as.numeric(dfRes[dfRes$Algorithm == algorithmName & dfRes$Type=="Var","Value"])
     dfRes <- rbind(dfRes, c(Algorithm = algorithmName,
                             Time = i,

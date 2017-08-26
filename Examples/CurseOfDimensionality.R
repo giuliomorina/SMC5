@@ -12,11 +12,11 @@ require(ggplot2)
 ######################
 # SETTING EXPERIMENT #
 ######################
-#set.seed(88,"L'Ecuyer-CMRG")
+set.seed(88,"L'Ecuyer-CMRG")
 n <- 1 #Filter time
 possible_dimension <- 3:25 #Possible dimensions. Need to be contiguous and start from 1!
-ncores <- 2
-repetitions <- 10
+ncores <- 5
+repetitions <- 100
 N <- 20 #Number of particles
 A_diag <- 1 #Elements on the diagonal of A
 varX <- 1 #Variance of sigmaX
@@ -67,11 +67,13 @@ expRes <- lapply(possible_dimension, function(dimension) {
                                                fParams = fParams, gParams=gParams),
                 KalmanRes = list(filteringParticle = kalmanParticles,
                                  filteringLogWeights = array(log(1/N),c(n,1,N))),
+                gParams = gParams,
                 Y_data = Y_data,
                 blocks = blocks))
 
   }, mc.cores = ncores)
   return(list(X_data = X_data,
+         fParams = fParams,
          res = res,
          dimension = dimension))
 })
@@ -94,6 +96,7 @@ approxStatisticGibbsPF <- matrix(NA, nrow=length(possible_dimension), ncol=repet
 approxStatisticKalman <- matrix(NA, nrow=length(possible_dimension), ncol=repetitions) #Baseline
 
 trueStatistics <- rep(NA, length(possible_dimension))
+trueStatistics2 <- matrix(NA, nrow=length(possible_dimension), ncol=repetitions) #Using Kalman E[theta|Y]
 counter <- 1
 for(dimension in possible_dimension) {
   # if(expRes[[dimension]]$dimension != dimension) {
@@ -128,6 +131,13 @@ for(dimension in possible_dimension) {
                                         type = type_statistic,
                                         comp = comp_statistic))
   })
+  trueStatistics2[counter,] <- sapply(expRes[[counter]]$res, function(res) {
+    return(computeKalmanStatisticFilter(fParams=expRes[[counter]]$fParams,
+                                        gParams = res$gParams,
+                                        n = n,
+                                        type = type_statistic,
+                                        comp = comp_statistic))
+  })
   trueStatistics[counter] <- computeTrueStatisticFilter(X_data = expRes[[counter]]$X_data,
                                                           n = n, type = type_statistic, comp = comp_statistic)
   counter <- counter+1
@@ -146,35 +156,47 @@ dfRes <- computeDfBiasVar(approxStatisticPF = approxStatisticGibbsPF, trueStatis
 dfRes <- computeDfBiasVar(approxStatisticPF = approxStatisticKalman, trueStatistics = trueStatistics,
                           algorithmName = "Kalman", dependentVarName = "Dimension", dfRes = dfRes)
 dfRes$Dimension <- dfRes$Dimension + (possible_dimension[1] - 1)
+dfRes2 <- computeDfBiasVar(approxStatisticPF = approxStatisticSIR, trueStatistics = trueStatistics2,
+                          algorithmName = "SIR", dependentVarName = "Dimension")
+dfRes2 <- computeDfBiasVar(approxStatisticPF = approxStatisticBlock, trueStatistics = trueStatistics2,
+                          algorithmName = "Block", dependentVarName = "Dimension", dfRes = dfRes2)
+dfRes2 <- computeDfBiasVar(approxStatisticPF = approxStatisticGibbsPF, trueStatistics = trueStatistics2,
+                          algorithmName = "GibbsPF", dependentVarName = "Dimension", dfRes = dfRes2)
+dfRes2 <- computeDfBiasVar(approxStatisticPF = approxStatisticKalman, trueStatistics = trueStatistics2,
+                          algorithmName = "Kalman", dependentVarName = "Dimension", dfRes = dfRes2)
+dfRes2$Dimension <- dfRes2$Dimension + (possible_dimension[1] - 1)
 
 if(Sys.info()["nodename"] == "greyplover.stats.ox.ac.uk" || Sys.info()["nodename"] == "greypartridge.stats.ox.ac.uk" ||
    Sys.info()["nodename"] == "greyheron.stats.ox.ac.uk" || Sys.info()["nodename"] == "greywagtail.stats.ox.ac.uk") {
-  saveRDS(dfRes, file = paste0("curse_of_dimensionality_res_",sample(1e7,size = 1),".RDS"))
+  saveRDS(dfRes, file = paste0("curse_of_dimensionality_res1_",sample(1e7,size = 1),".RDS"))
+  saveRDS(dfRes2, file = paste0("curse_of_dimensionality_res2_",sample(1e7,size = 1),".RDS"))
 }
 
 ########
 # PLOT #
 ########
 
+dfToPlot <- dfRes2
+
 #Variance
 #Just to check the different type of relative variances:
-ggplot(dfRes[dfRes$Type != "Var" & dfRes$Type != "MSE" &
-               dfRes$Type != "Bias" & dfRes$Type != "RMSE" &
-               dfRes$Type != "RelAbsBias",], aes(x = as.numeric(Dimension), y=as.numeric(Value), group=interaction(Algorithm,Type),
+ggplot(dfToPlot[dfToPlot$Type != "Var" & dfToPlot$Type != "MSE" &
+               dfToPlot$Type != "Bias" & dfToPlot$Type != "RMSE" &
+                 dfToPlot$Type != "RelAbsBias",], aes(x = as.numeric(Dimension), y=as.numeric(Value), group=interaction(Algorithm,Type),
                                                                   linetype = Algorithm, color = Type)) + geom_line()
 #RelVar
-ggplot(dfRes[dfRes$Type == "RelVar",], aes(x = Dimension, y=Value, color = Algorithm)) +
+ggplot(dfToPlot[dfToPlot$Type == "RelVar",], aes(x = Dimension, y=Value, color = Algorithm)) +
   geom_line(size = 1.2) +  scale_colour_brewer(palette = "Set1")
 
-ggplot(dfRes[dfRes$Type == "RelVar",], aes(x = Dimension, y=Value, color = Algorithm)) +
+ggplot(dfToPlot[dfToPlot$Type == "RelVar",], aes(x = Dimension, y=Value, color = Algorithm)) +
   geom_point(size = 1.2) +  scale_colour_brewer(palette = "Set1") +
   geom_smooth(method="loess",se=TRUE)
 
 #Bias
-ggplot(dfRes[dfRes$Type == "Bias",], aes(x = as.numeric(Dimension), y=abs(Value), color = Algorithm)) + geom_line() +
+ggplot(dfToPlot[dfToPlot$Type == "Bias",], aes(x = as.numeric(Dimension), y=abs(Value), color = Algorithm)) + geom_line() +
    scale_colour_brewer(palette = "Set1")
 
-ggplot(dfRes[dfRes$Type == "Bias",], aes(x = Dimension, y=Value, color = Algorithm)) +
+ggplot(dfToPlot[dfToPlot$Type == "Bias",], aes(x = Dimension, y=Value, color = Algorithm)) +
   geom_point(size = 1.2) +  scale_colour_brewer(palette = "Set1") +
   geom_smooth(method="loess",se=TRUE) + geom_hline(yintercept = 0, linetype="dashed")
 
