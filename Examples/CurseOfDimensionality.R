@@ -145,7 +145,7 @@ dfRes <- computeDfBiasVar(approxStatisticPF = approxStatisticGibbsPF, trueStatis
                           algorithmName = "GibbsPF", dependentVarName = "Dimension", dfRes = dfRes)
 dfRes <- computeDfBiasVar(approxStatisticPF = approxStatisticKalman, trueStatistics = trueStatistics,
                           algorithmName = "Kalman", dependentVarName = "Dimension", dfRes = dfRes)
-
+dfRes$Dimension <- dfRes$Dimension + (possible_dimension[1] - 1)
 
 if(Sys.info()["nodename"] == "greyplover.stats.ox.ac.uk" || Sys.info()["nodename"] == "greypartridge.stats.ox.ac.uk" ||
    Sys.info()["nodename"] == "greyheron.stats.ox.ac.uk" || Sys.info()["nodename"] == "greywagtail.stats.ox.ac.uk") {
@@ -166,7 +166,15 @@ ggplot(dfRes[dfRes$Type != "Var" & dfRes$Type != "MSE" &
 ggplot(dfRes[dfRes$Type == "RelVar",], aes(x = Dimension, y=Value, color = Algorithm)) +
   geom_line(size = 1.2) +  scale_colour_brewer(palette = "Set1")
 
+ggplot(dfRes[dfRes$Type == "RelVar",], aes(x = Dimension, y=Value, color = Algorithm)) +
+  geom_point(size = 1.2) +  scale_colour_brewer(palette = "Set1") +
+  geom_smooth(method="loess",se=TRUE)
+
 #Bias
 ggplot(dfRes[dfRes$Type == "Bias",], aes(x = as.numeric(Dimension), y=abs(Value), color = Algorithm)) + geom_line() +
    scale_colour_brewer(palette = "Set1")
+
+ggplot(dfRes[dfRes$Type == "Bias",], aes(x = Dimension, y=Value, color = Algorithm)) +
+  geom_point(size = 1.2) +  scale_colour_brewer(palette = "Set1") +
+  geom_smooth(method="loess",se=TRUE) + geom_hline(yintercept = 0, linetype="dashed")
 
