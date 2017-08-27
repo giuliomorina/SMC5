@@ -87,18 +87,16 @@ if(Sys.info()["nodename"] == "greyplover.stats.ox.ac.uk" || Sys.info()["nodename
 }
 
 dfResList <- lapply(c("mean","sum","mean_squared","sum_squared"), function(type_statistic){
+
   approxStatisticSIR <- matrix(NA, nrow=length(possible_dimension), ncol=repetitions)
   approxStatisticBlock <- matrix(NA, nrow=length(possible_dimension), ncol=repetitions)
   approxStatisticGibbsPF <- matrix(NA, nrow=length(possible_dimension), ncol=repetitions)
   approxStatisticKalman <- matrix(NA, nrow=length(possible_dimension), ncol=repetitions) #Baseline
-
   dataStatistics <- rep(NA, length(possible_dimension))
   trueStatistics <- matrix(NA, nrow=length(possible_dimension), ncol=repetitions) #Using Kalman E[theta|Y]
+
   counter <- 1
   for(dimension in possible_dimension) {
-    # if(expRes[[dimension]]$dimension != dimension) {
-    #   stop("Uh-oh something's wrong! Perhaps possible_dimension vector is not continuous and starting from one?")
-    # }
     approxStatisticSIR[counter,] <- sapply(expRes[[counter]]$res, function(res) {
       return(computeApproxStatisticFilter(particles = res$SIRRes$filteringParticle,
                                           logWeights = res$SIRRes$filteringLogWeights,
