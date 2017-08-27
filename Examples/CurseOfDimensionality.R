@@ -22,8 +22,6 @@ A_diag <- 1 #Elements on the diagonal of A
 varX <- 1 #Variance of sigmaX
 varY <- 1 #Variance of sigmaY
 X0_point <- 10 #Initial point, just away from 0 to avoid problem when estimate relative values
-type_statistic <- "mean_squared"
-comp_statistic <- 1 #Used for type_statistic mean or mean_squared
 card_block <- 3 #Cardinality of the block
 radius <- 1 #Radius of Gibbs PF
 m <- 10 #Number of sweeps
@@ -88,14 +86,14 @@ if(Sys.info()["nodename"] == "greyplover.stats.ox.ac.uk" || Sys.info()["nodename
   type_statistic <- c("mean", "sum", "mean_squared", "sum_squared")
 }
 
-dfResList <- lapply(type_statistic, function(type_statistic){
+dfResList <- lapply(c("mean","sum","mean_squared","sum_squared"), function(type_statistic){
   approxStatisticSIR <- matrix(NA, nrow=length(possible_dimension), ncol=repetitions)
   approxStatisticBlock <- matrix(NA, nrow=length(possible_dimension), ncol=repetitions)
   approxStatisticGibbsPF <- matrix(NA, nrow=length(possible_dimension), ncol=repetitions)
   approxStatisticKalman <- matrix(NA, nrow=length(possible_dimension), ncol=repetitions) #Baseline
 
-  trueStatistics <- rep(NA, length(possible_dimension))
-  trueStatistics2 <- matrix(NA, nrow=length(possible_dimension), ncol=repetitions) #Using Kalman E[theta|Y]
+  dataStatistics <- rep(NA, length(possible_dimension))
+  trueStatistics <- matrix(NA, nrow=length(possible_dimension), ncol=repetitions) #Using Kalman E[theta|Y]
   counter <- 1
   for(dimension in possible_dimension) {
     # if(expRes[[dimension]]$dimension != dimension) {
@@ -130,42 +128,24 @@ dfResList <- lapply(type_statistic, function(type_statistic){
                                           type = type_statistic,
                                           comp = comp_statistic))
     })
-    trueStatistics2[counter,] <- sapply(expRes[[counter]]$res, function(res) {
+    trueStatistics[counter,] <- sapply(expRes[[counter]]$res, function(res) {
       return(computeKalmanStatisticFilter(fParams=expRes[[counter]]$fParams,
                                           gParams = res$gParams,
                                           n = n,
                                           type = type_statistic,
                                           comp = comp_statistic))
     })
-    trueStatistics[counter] <- computeTrueStatisticFilter(X_data = expRes[[counter]]$X_data,
+    dataStatistics[counter] <- computeTrueStatisticFilter(X_data = expRes[[counter]]$X_data,
                                                           n = n, type = type_statistic, comp = comp_statistic)
     counter <- counter+1
   }
 
-  ########################
-  # COMPUTE BIAS/MSE/VAR #
-  ########################
-
-  dfRes <- computeDfBiasVar(approxStatisticPF = approxStatisticSIR, trueStatistics = trueStatistics,
-                            algorithmName = "SIR", dependentVarName = "Dimension")
-  dfRes <- computeDfBiasVar(approxStatisticPF = approxStatisticBlock, trueStatistics = trueStatistics,
-                            algorithmName = "Block", dependentVarName = "Dimension", dfRes = dfRes)
-  dfRes <- computeDfBiasVar(approxStatisticPF = approxStatisticGibbsPF, trueStatistics = trueStatistics,
-                            algorithmName = "GibbsPF", dependentVarName = "Dimension", dfRes = dfRes)
-  dfRes <- computeDfBiasVar(approxStatisticPF = approxStatisticKalman, trueStatistics = trueStatistics,
-                            algorithmName = "Kalman", dependentVarName = "Dimension", dfRes = dfRes)
-  dfRes$Dimension <- dfRes$Dimension + (possible_dimension[1] - 1)
-  dfRes2 <- computeDfBiasVar(approxStatisticPF = approxStatisticSIR, trueStatistics = trueStatistics2,
-                             algorithmName = "SIR", dependentVarName = "Dimension")
-  dfRes2 <- computeDfBiasVar(approxStatisticPF = approxStatisticBlock, trueStatistics = trueStatistics2,
-                             algorithmName = "Block", dependentVarName = "Dimension", dfRes = dfRes2)
-  dfRes2 <- computeDfBiasVar(approxStatisticPF = approxStatisticGibbsPF, trueStatistics = trueStatistics2,
-                             algorithmName = "GibbsPF", dependentVarName = "Dimension", dfRes = dfRes2)
-  dfRes2 <- computeDfBiasVar(approxStatisticPF = approxStatisticKalman, trueStatistics = trueStatistics2,
-                             algorithmName = "Kalman", dependentVarName = "Dimension", dfRes = dfRes2)
-  dfRes2$Dimension <- dfRes2$Dimension + (possible_dimension[1] - 1)
-  return(list(dfRes = dfRes,
-              dfRes2 = dfRes2))
+  return(list(approxStatisticSIR=approxStatisticSIR,
+              approxStatisticBlock=approxStatisticBlock,
+              approxStatisticGibbsPF=approxStatisticGibbsPF,
+              approxStatisticKalman=approxStatisticKalman,
+              dataStatistics=dataStatistics,
+              trueStatistics=trueStatistics))
 })
 
 
@@ -173,6 +153,29 @@ if(Sys.info()["nodename"] == "greyplover.stats.ox.ac.uk" || Sys.info()["nodename
    Sys.info()["nodename"] == "greyheron.stats.ox.ac.uk" || Sys.info()["nodename"] == "greywagtail.stats.ox.ac.uk") {
   saveRDS(dfResList, file = paste0("curse_of_dimensionality_res_",sample(1e7,size = 1),".RDS"))
 }
+
+########################
+# COMPUTE BIAS/MSE/VAR #
+########################
+
+dfRes <- computeDfBiasVar(approxStatisticPF = approxStatisticSIR, trueStatistics = trueStatistics,
+                          algorithmName = "SIR", dependentVarName = "Dimension")
+dfRes <- computeDfBiasVar(approxStatisticPF = approxStatisticBlock, trueStatistics = trueStatistics,
+                          algorithmName = "Block", dependentVarName = "Dimension", dfRes = dfRes)
+dfRes <- computeDfBiasVar(approxStatisticPF = approxStatisticGibbsPF, trueStatistics = trueStatistics,
+                          algorithmName = "GibbsPF", dependentVarName = "Dimension", dfRes = dfRes)
+dfRes <- computeDfBiasVar(approxStatisticPF = approxStatisticKalman, trueStatistics = trueStatistics,
+                          algorithmName = "Kalman", dependentVarName = "Dimension", dfRes = dfRes)
+dfRes$Dimension <- dfRes$Dimension + (possible_dimension[1] - 1)
+dfRes2 <- computeDfBiasVar(approxStatisticPF = approxStatisticSIR, trueStatistics = trueStatistics2,
+                           algorithmName = "SIR", dependentVarName = "Dimension")
+dfRes2 <- computeDfBiasVar(approxStatisticPF = approxStatisticBlock, trueStatistics = trueStatistics2,
+                           algorithmName = "Block", dependentVarName = "Dimension", dfRes = dfRes2)
+dfRes2 <- computeDfBiasVar(approxStatisticPF = approxStatisticGibbsPF, trueStatistics = trueStatistics2,
+                           algorithmName = "GibbsPF", dependentVarName = "Dimension", dfRes = dfRes2)
+dfRes2 <- computeDfBiasVar(approxStatisticPF = approxStatisticKalman, trueStatistics = trueStatistics2,
+                           algorithmName = "Kalman", dependentVarName = "Dimension", dfRes = dfRes2)
+dfRes2$Dimension <- dfRes2$Dimension + (possible_dimension[1] - 1)
 
 ########
 # PLOT #
@@ -192,7 +195,7 @@ ggplot(dfToPlot[dfToPlot$Type == "RelVar",], aes(x = Dimension, y=Value, color =
 
 ggplot(dfToPlot[dfToPlot$Type == "RelVar",], aes(x = Dimension, y=Value, color = Algorithm)) +
   geom_point(size = 1.2) +  scale_colour_brewer(palette = "Set1") +
-  geom_smooth(method="loess",se=TRUE)
+  geom_smooth(method="loess",se=FALSE)
 
 #Bias
 ggplot(dfToPlot[dfToPlot$Type == "Bias",], aes(x = as.numeric(Dimension), y=abs(Value), color = Algorithm)) + geom_line() +
@@ -202,3 +205,23 @@ ggplot(dfToPlot[dfToPlot$Type == "Bias",], aes(x = Dimension, y=Value, color = A
   geom_point(size = 1.2) +  scale_colour_brewer(palette = "Set1") +
   geom_smooth(method="loess",se=TRUE) + geom_hline(yintercept = 0, linetype="dashed")
 
+PROVA <- data.frame(Repetition = numeric(),
+                    Dimension = numeric(),
+                    Bias = numeric(),
+                    stringsAsFactors = FALSE)
+for(i in 1:nrow(dfResList[[1]]$approxStatisticSIR)) {
+  for(j in 1:ncol(dfResList[[1]]$approxStatisticSIR)) {
+    PROVA <- rbind(PROVA,c(Repetition = j,
+                           Dimension = possible_dimension[i],
+                           Bias = dfResList[[1]]$approxStatisticSIR[i,j] - dfResList[[1]]$trueStatistics2[i,j]),
+                   stringsAsFactors = FALSE)
+  }
+}
+colnames(PROVA) <- c("Repetition","Dimension","Bias")
+ggplot(PROVA, aes(x=Dimension, y=Bias)) +  scale_colour_brewer(palette = "Set1") +
+  geom_smooth(method="lm" ,se=TRUE)
+
+PROVA2 <- computeDfBiasMSE(approxList = dfResList[[1]][3:6], trueStatistics = dfResList[[1]]$trueStatistics2,
+                           dependentVar = possible_dimension, dependentVarName = "Dimension")
+ggplot(PROVA2[PROVA2$Type=="Bias",], aes(x=Dimension, y=Value, color = Algorithm)) +  scale_colour_brewer(palette = "Set1") +
+  geom_smooth(method="lm" ,se=TRUE)

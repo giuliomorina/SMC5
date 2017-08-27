@@ -14,7 +14,7 @@ n <- 10 #Filter time. Note: the experiment is still done in 1 time step
 N <- 500 #Number of particles
 dimension <- 3
 A <- generateA(c(0.5,0.2),dimension)
-repetitions <- 3000
+repetitions <- 3
 type_statistic <- "sum_squared"
 comp_statistic <- 3
 ncores <- 2

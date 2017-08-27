@@ -104,28 +104,64 @@ computeDfBiasVar <- function(approxStatisticPF, trueStatistics, algorithmName, d
                    MSE = mean((approxStatisticPF[i,]-trueStatistics[i,])^2),
                    RMSE = sqrt(mean((approxStatisticPF[i,]-trueStatistics[i,])^2)))
     for(type in c("Bias", "RelAbsBias","Var", "CoefVar", "RelVar", "RelVar2", "RelVar4", "MSE","RMSE")) {
-      dfRes <- rbind(dfRes, c(Algorithm = algorithmName,
+      dfRes <- rbindlist(list(dfRes, data.frame(Algorithm = algorithmName,
                               Time = i,
                               Type = type,
-                              Value = estAll[[type]]),
-                     stringsAsFactors = FALSE)
+                              Value = estAll[[type]],
+                              stringsAsFactors = FALSE)))
     }
   }
   colnames(dfRes) <- c("Algorithm", "Time", "Type", "Value")
+  dfRes <- as.data.frame(dfRes) #Useful otherwise there is an extra weird thing!
+  dfRes$Value <- as.numeric(dfRes$Value)
   #Other relative variance (Definition 2) of http://www.statisticshowto.com/relative-variance/
+  variances <- as.numeric(dfRes[dfRes$Algorithm == algorithmName & dfRes$Type=="Var","Value"])
   for(i in 1:nrow(trueStatistics)) {
-    variances <- as.numeric(dfRes[dfRes$Algorithm == algorithmName & dfRes$Type=="Var","Value"])
-    dfRes <- rbind(dfRes, c(Algorithm = algorithmName,
+    dfRes <- rbindlist(list(dfRes, data.frame(Algorithm = algorithmName,
                             Time = i,
                             Type = "RelVar3",
                             Value = as.numeric(dfRes[dfRes$Algorithm == algorithmName &
                                                        dfRes$Type=="Var" &
-                                                       dfRes$Time == i,"Value"])/sum(variances)),
-                   stringsAsFactors = FALSE)
+                                                       dfRes$Time == i,"Value"])/sum(variances),
+                            stringsAsFactors = FALSE)))
   }
+  dfRes <- as.data.frame(dfRes)
   dfRes$Time <- as.numeric(dfRes$Time)
   dfRes$Value <- as.numeric(dfRes$Value)
   dfRes$Type <- as.factor(dfRes$Type)
   colnames(dfRes) <- c("Algorithm", dependentVarName, "Type", "Value")
+  return(dfRes)
+}
+
+computeDfBiasMSE <- function(approxList, trueStatistics, dependentVar, dependentVarName) {
+  if(is.vector(trueStatistics)) {
+    trueStatistics <- matrix(trueStatistics, nrow = nrow(approxList[[1]]), ncol = ncol(approxList[[1]]), byrow = FALSE)
+  }
+  dfRes <- data.frame(Repetition = numeric(),
+                   DependentVar = numeric(),
+                   Algorithm = character(),
+                   Type = character(),
+                   Value= numeric(),
+                   stringsAsFactors = FALSE)
+  for(k in 1:length(approxList)) {
+    for(i in 1:nrow(approxList[[k]])) {
+      for(j in 1:ncol(approxList[[k]])) {
+        dfRes <- rbindlist(list(dfRes, data.frame(Repetition = j,
+                          DependentVar = dependentVar[i],
+                          Algorithm = names(approxList[k]),
+                          Type = "Bias",
+                          Value= approxList[[k]][i,j] - trueStatistics[i,j],
+                          stringsAsFactors = FALSE)))
+      }
+    }
+  }
+  colnames(dfRes) <- c("Repetition", "DependentVar", "Algorithm", "Type", "Value")
+  dfRes <- as.data.frame(dfRes)
+  dfRes$Repetition <- as.numeric(dfRes$Repetition)
+  dfRes$DependentVar <- as.numeric(dfRes$DependentVar)
+  dfRes$Value <- as.numeric(dfRes$Value)
+  dfRes$Type <- as.factor(dfRes$Type)
+  dfRes$Algorithm <- as.factor(dfRes$Algorithm)
+  colnames(dfRes) <- c("Repetition", dependentVarName, "Algorithm", "Type", "Value")
   return(dfRes)
 }
