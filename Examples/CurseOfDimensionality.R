@@ -14,17 +14,23 @@ require(ggplot2)
 ######################
 set.seed(88,"L'Ecuyer-CMRG")
 n <- 1 #Filter time
-possible_dimension <- 3:25 #Possible dimensions. Need to be contiguous and start from 1!
-ncores <- 5
+possible_dimension <- 1:50 #Possible dimensions. Need to be contiguous and start from 1!
+ncores <- 1
 repetitions <- 100
 N <- 20 #Number of particles
 A_diag <- 1 #Elements on the diagonal of A
 varX <- 1 #Variance of sigmaX
 varY <- 1 #Variance of sigmaY
 X0_point <- 10 #Initial point, just away from 0 to avoid problem when estimate relative values
-card_block <- 3 #Cardinality of the block
-radius <- 1 #Radius of Gibbs PF
+card_block <- 1 #Cardinality of the block
+radius <- 0 #Radius of Gibbs PF
 m <- 10 #Number of sweeps
+
+type_statistic_plot <- "sum_squared" #Which statistic to plot
+comp_statistic_plot <- 2 #Which component of the statistic (must be 1 for sum and sum squared)
+if(type_statistic_plot == "sum" || type_statistic_plot == "sum_squared") {
+  comp_statistic_plot <- 1
+}
 
 #######################
 # RUN SIR/BLOCK/GIBBS #
@@ -87,65 +93,73 @@ if(Sys.info()["nodename"] == "greyplover.stats.ox.ac.uk" || Sys.info()["nodename
 }
 
 dfResList <- lapply(c("mean","sum","mean_squared","sum_squared"), function(type_statistic){
-
-  approxStatisticSIR <- matrix(NA, nrow=length(possible_dimension), ncol=repetitions)
-  approxStatisticBlock <- matrix(NA, nrow=length(possible_dimension), ncol=repetitions)
-  approxStatisticGibbsPF <- matrix(NA, nrow=length(possible_dimension), ncol=repetitions)
-  approxStatisticKalman <- matrix(NA, nrow=length(possible_dimension), ncol=repetitions) #Baseline
-  dataStatistics <- rep(NA, length(possible_dimension))
-  trueStatistics <- matrix(NA, nrow=length(possible_dimension), ncol=repetitions) #Using Kalman E[theta|Y]
-
-  counter <- 1
-  for(dimension in possible_dimension) {
-    approxStatisticSIR[counter,] <- sapply(expRes[[counter]]$res, function(res) {
-      return(computeApproxStatisticFilter(particles = res$SIRRes$filteringParticle,
-                                          logWeights = res$SIRRes$filteringLogWeights,
-                                          n = n,
-                                          type = type_statistic,
-                                          comp = comp_statistic))
-    })
-    approxStatisticBlock[counter,] <- sapply(expRes[[counter]]$res, function(res) {
-      return(computeApproxStatisticFilter(particles = res$BlockRes$filteringParticle,
-                                          logWeights = res$BlockRes$filteringLogWeights,
-                                          n = n,
-                                          blocks = res$blocks,
-                                          type = type_statistic,
-                                          comp = comp_statistic))
-    })
-    approxStatisticGibbsPF[counter,] <- sapply(expRes[[counter]]$res, function(res) {
-      return(computeApproxStatisticFilter(particles = res$GibbsRes$filteringParticle,
-                                          logWeights = res$GibbsRes$filteringLogWeights,
-                                          n = n,
-                                          type = type_statistic,
-                                          comp = comp_statistic))
-    })
-    approxStatisticKalman[counter,] <- sapply(expRes[[counter]]$res, function(res) {
-      return(computeApproxStatisticFilter(particles = res$KalmanRes$filteringParticle,
-                                          logWeights = res$KalmanRes$filteringLogWeights,
-                                          n = n,
-                                          type = type_statistic,
-                                          comp = comp_statistic))
-    })
-    trueStatistics[counter,] <- sapply(expRes[[counter]]$res, function(res) {
-      return(computeKalmanStatisticFilter(fParams=expRes[[counter]]$fParams,
-                                          gParams = res$gParams,
-                                          n = n,
-                                          type = type_statistic,
-                                          comp = comp_statistic))
-    })
-    dataStatistics[counter] <- computeTrueStatisticFilter(X_data = expRes[[counter]]$X_data,
-                                                          n = n, type = type_statistic, comp = comp_statistic)
-    counter <- counter+1
+  if(type_statistic == "sum" || type_statistic == "sum_squared") {
+    possible_comp_statistic <- NA
+  } else {
+    possible_comp_statistic <- 1:min(possible_dimension)
   }
+  dfResComp <- lapply(possible_comp_statistic, function(comp_statistic) {
+    approxStatisticSIR <- matrix(NA, nrow=length(possible_dimension), ncol=repetitions)
+    approxStatisticBlock <- matrix(NA, nrow=length(possible_dimension), ncol=repetitions)
+    approxStatisticGibbsPF <- matrix(NA, nrow=length(possible_dimension), ncol=repetitions)
+    approxStatisticKalman <- matrix(NA, nrow=length(possible_dimension), ncol=repetitions) #Baseline
+    dataStatistics <- rep(NA, length(possible_dimension))
+    trueStatistics <- matrix(NA, nrow=length(possible_dimension), ncol=repetitions) #Using Kalman E[theta|Y]
 
-  return(list(approxStatisticSIR=approxStatisticSIR,
-              approxStatisticBlock=approxStatisticBlock,
-              approxStatisticGibbsPF=approxStatisticGibbsPF,
-              approxStatisticKalman=approxStatisticKalman,
-              dataStatistics=dataStatistics,
-              trueStatistics=trueStatistics))
+    counter <- 1
+    for(dimension in possible_dimension) {
+      approxStatisticSIR[counter,] <- sapply(expRes[[counter]]$res, function(res) {
+        return(computeApproxStatisticFilter(particles = res$SIRRes$filteringParticle,
+                                            logWeights = res$SIRRes$filteringLogWeights,
+                                            n = n,
+                                            type = type_statistic,
+                                            comp = comp_statistic))
+      })
+      approxStatisticBlock[counter,] <- sapply(expRes[[counter]]$res, function(res) {
+        return(computeApproxStatisticFilter(particles = res$BlockRes$filteringParticle,
+                                            logWeights = res$BlockRes$filteringLogWeights,
+                                            n = n,
+                                            blocks = res$blocks,
+                                            type = type_statistic,
+                                            comp = comp_statistic))
+      })
+      approxStatisticGibbsPF[counter,] <- sapply(expRes[[counter]]$res, function(res) {
+        return(computeApproxStatisticFilter(particles = res$GibbsRes$filteringParticle,
+                                            logWeights = res$GibbsRes$filteringLogWeights,
+                                            n = n,
+                                            type = type_statistic,
+                                            comp = comp_statistic))
+      })
+      approxStatisticKalman[counter,] <- sapply(expRes[[counter]]$res, function(res) {
+        return(computeApproxStatisticFilter(particles = res$KalmanRes$filteringParticle,
+                                            logWeights = res$KalmanRes$filteringLogWeights,
+                                            n = n,
+                                            type = type_statistic,
+                                            comp = comp_statistic))
+      })
+      trueStatistics[counter,] <- sapply(expRes[[counter]]$res, function(res) {
+        return(computeKalmanStatisticFilter(fParams=expRes[[counter]]$fParams,
+                                            gParams = res$gParams,
+                                            n = n,
+                                            type = type_statistic,
+                                            comp = comp_statistic))
+      })
+      dataStatistics[counter] <- computeTrueStatisticFilter(X_data = expRes[[counter]]$X_data,
+                                                            n = n, type = type_statistic, comp = comp_statistic)
+      counter <- counter+1
+    }
+
+    return(list(SIR=approxStatisticSIR,
+                Block=approxStatisticBlock,
+                GibbsPF=approxStatisticGibbsPF,
+                Kalman=approxStatisticKalman,
+                dataStatistics=dataStatistics,
+                trueStatistics=trueStatistics))
+  })
+  return(dfResComp)
 })
 
+names(dfResList) <- c("mean","sum","mean_squared","sum_squared")
 
 if(Sys.info()["nodename"] == "greyplover.stats.ox.ac.uk" || Sys.info()["nodename"] == "greypartridge.stats.ox.ac.uk" ||
    Sys.info()["nodename"] == "greyheron.stats.ox.ac.uk" || Sys.info()["nodename"] == "greywagtail.stats.ox.ac.uk") {
@@ -156,70 +170,48 @@ if(Sys.info()["nodename"] == "greyplover.stats.ox.ac.uk" || Sys.info()["nodename
 # COMPUTE BIAS/MSE/VAR #
 ########################
 
-dfRes <- computeDfBiasVar(approxStatisticPF = approxStatisticSIR, trueStatistics = trueStatistics,
-                          algorithmName = "SIR", dependentVarName = "Dimension")
-dfRes <- computeDfBiasVar(approxStatisticPF = approxStatisticBlock, trueStatistics = trueStatistics,
-                          algorithmName = "Block", dependentVarName = "Dimension", dfRes = dfRes)
-dfRes <- computeDfBiasVar(approxStatisticPF = approxStatisticGibbsPF, trueStatistics = trueStatistics,
-                          algorithmName = "GibbsPF", dependentVarName = "Dimension", dfRes = dfRes)
-dfRes <- computeDfBiasVar(approxStatisticPF = approxStatisticKalman, trueStatistics = trueStatistics,
-                          algorithmName = "Kalman", dependentVarName = "Dimension", dfRes = dfRes)
-dfRes$Dimension <- dfRes$Dimension + (possible_dimension[1] - 1)
-dfRes2 <- computeDfBiasVar(approxStatisticPF = approxStatisticSIR, trueStatistics = trueStatistics2,
-                           algorithmName = "SIR", dependentVarName = "Dimension")
-dfRes2 <- computeDfBiasVar(approxStatisticPF = approxStatisticBlock, trueStatistics = trueStatistics2,
-                           algorithmName = "Block", dependentVarName = "Dimension", dfRes = dfRes2)
-dfRes2 <- computeDfBiasVar(approxStatisticPF = approxStatisticGibbsPF, trueStatistics = trueStatistics2,
-                           algorithmName = "GibbsPF", dependentVarName = "Dimension", dfRes = dfRes2)
-dfRes2 <- computeDfBiasVar(approxStatisticPF = approxStatisticKalman, trueStatistics = trueStatistics2,
-                           algorithmName = "Kalman", dependentVarName = "Dimension", dfRes = dfRes2)
-dfRes2$Dimension <- dfRes2$Dimension + (possible_dimension[1] - 1)
+dfResVarData <- computeDfVar(approxList = dfResList[[type_statistic_plot]][[comp_statistic_plot]][c("SIR","Block","GibbsPF","Kalman")],
+                      trueStatistics = dfResList[[type_statistic_plot]][[comp_statistic_plot]]$dataStatistics,
+                      dependentVar = possible_dimension,
+                      dependentVarName = "Dimension")
+dfResVarTrue <- computeDfVar(approxList = dfResList[[type_statistic_plot]][[comp_statistic_plot]][c("SIR","Block","GibbsPF","Kalman")],
+                          trueStatistics = dfResList[[type_statistic_plot]][[comp_statistic_plot]]$trueStatistics,
+                          dependentVar = possible_dimension,
+                          dependentVarName = "Dimension")
+
+dfResBiasMSEData <- computeDfBiasMSE(approxList = dfResList[[type_statistic_plot]][[comp_statistic_plot]][c("SIR","Block","GibbsPF","Kalman")],
+                                     trueStatistics = dfResList[[type_statistic_plot]][[comp_statistic_plot]]$dataStatistics,
+                                     dependentVar = possible_dimension,
+                                     dependentVarName = "Dimension")
+dfResBiasMSETrue <- computeDfBiasMSE(approxList = dfResList[[type_statistic_plot]][[comp_statistic_plot]][c("SIR","Block","GibbsPF","Kalman")],
+                                     trueStatistics = dfResList[[type_statistic_plot]][[comp_statistic_plot]]$trueStatistics,
+                                     dependentVar = possible_dimension,
+                                     dependentVarName = "Dimension")
 
 ########
 # PLOT #
 ########
 
-dfToPlot <- dfResList[[1]]$dfRes2
+dfVarToPlot <- dfResVarTrue
+dfBiasMSEToPlot <- dfResBiasMSETrue
 
 #Variance
 #Just to check the different type of relative variances:
-ggplot(dfToPlot[dfToPlot$Type != "Var" & dfToPlot$Type != "MSE" &
-                  dfToPlot$Type != "Bias" & dfToPlot$Type != "RMSE" &
-                  dfToPlot$Type != "RelAbsBias",], aes(x = as.numeric(Dimension), y=as.numeric(Value), group=interaction(Algorithm,Type),
-                                                       linetype = Algorithm, color = Type)) + geom_line()
-#RelVar
-ggplot(dfToPlot[dfToPlot$Type == "RelVar",], aes(x = Dimension, y=Value, color = Algorithm)) +
-  geom_line(size = 1.2) +  scale_colour_brewer(palette = "Set1")
+# ggplot(dfVarToPlot[dfVarToPlot$Type != "Var",], aes(x = as.numeric(Dimension), y=as.numeric(Value), group=interaction(Algorithm,Type),
+#                                                        linetype = Algorithm, color = Type)) + geom_line()
+# #RelVar
+# ggplot(dfVarToPlot[dfVarToPlot$Type == "RelVar",], aes(x = Dimension, y=Value, color = Algorithm)) +
+#   geom_line(size = 1.2) +  scale_colour_brewer(palette = "Set1")
 
-ggplot(dfToPlot[dfToPlot$Type == "RelVar",], aes(x = Dimension, y=Value, color = Algorithm)) +
+ggplot(dfVarToPlot[dfVarToPlot$Type == "RelVar",], aes(x = Dimension, y=Value, color = Algorithm)) +
   geom_point(size = 1.2) +  scale_colour_brewer(palette = "Set1") +
-  geom_smooth(method="loess",se=FALSE)
+  geom_smooth(method="lm",se=FALSE)
 
 #Bias
-ggplot(dfToPlot[dfToPlot$Type == "Bias",], aes(x = as.numeric(Dimension), y=abs(Value), color = Algorithm)) + geom_line() +
-  scale_colour_brewer(palette = "Set1")
+# ggplot(dfBiasMSEToPlot[dfBiasMSEToPlot$Type == "Bias",], aes(x = as.numeric(Dimension), y=abs(Value), color = Algorithm)) + geom_line() +
+#   scale_colour_brewer(palette = "Set1")
 
-ggplot(dfToPlot[dfToPlot$Type == "Bias",], aes(x = Dimension, y=Value, color = Algorithm)) +
-  geom_point(size = 1.2) +  scale_colour_brewer(palette = "Set1") +
-  geom_smooth(method="loess",se=TRUE) + geom_hline(yintercept = 0, linetype="dashed")
+ggplot(dfBiasMSEToPlot[dfBiasMSEToPlot$Type == "Bias",], aes(x = Dimension, y=Value, color = Algorithm)) +
+  scale_colour_brewer(palette = "Set1") +
+  geom_smooth(method="lm",se=TRUE) + geom_hline(yintercept = 0, linetype="dashed")
 
-PROVA <- data.frame(Repetition = numeric(),
-                    Dimension = numeric(),
-                    Bias = numeric(),
-                    stringsAsFactors = FALSE)
-for(i in 1:nrow(dfResList[[1]]$approxStatisticSIR)) {
-  for(j in 1:ncol(dfResList[[1]]$approxStatisticSIR)) {
-    PROVA <- rbind(PROVA,c(Repetition = j,
-                           Dimension = possible_dimension[i],
-                           Bias = dfResList[[1]]$approxStatisticSIR[i,j] - dfResList[[1]]$trueStatistics2[i,j]),
-                   stringsAsFactors = FALSE)
-  }
-}
-colnames(PROVA) <- c("Repetition","Dimension","Bias")
-ggplot(PROVA, aes(x=Dimension, y=Bias)) +  scale_colour_brewer(palette = "Set1") +
-  geom_smooth(method="lm" ,se=TRUE)
-
-PROVA2 <- computeDfBiasMSE(approxList = dfResList[[1]][3:6], trueStatistics = dfResList[[1]]$trueStatistics2,
-                           dependentVar = possible_dimension, dependentVarName = "Dimension")
-ggplot(PROVA2[PROVA2$Type=="Bias",], aes(x=Dimension, y=Value, color = Algorithm)) +  scale_colour_brewer(palette = "Set1") +
-  geom_smooth(method="lm" ,se=TRUE)
