@@ -16,11 +16,12 @@ require(ggplot2)
 ######################
 # SETTING EXPERIMENT #
 ######################
+id <- sample(1e7,size = 1)
 set.seed(878,"L'Ecuyer-CMRG")
 n <- 10 #Filter time (NOTE: the experiment is still performed in one time step)
 dimension <- 8
 ncores <- 2
-repetitions <- 1000
+repetitions <- 100
 N <- 50 #Number of particles
 A <- generateA(c(0,0,0,0.6), dimension)
 sigmaX <- diag(rep(1,dimension))
@@ -174,71 +175,94 @@ names(dfResList) <- c("mean","sum","mean_squared","sum_squared")
 #dfResList[[TYPE]][[COMPONENT]]$Kalman
 #dfResList[[TYPE]][[COMPONENT]]$trueStatistics[REPETITION]
 
+if(Sys.info()["nodename"] == "greyplover.stats.ox.ac.uk" || Sys.info()["nodename"] == "greypartridge.stats.ox.ac.uk" ||
+   Sys.info()["nodename"] == "greyheron.stats.ox.ac.uk" || Sys.info()["nodename"] == "greywagtail.stats.ox.ac.uk") {
+  saveRDS(dfResList, file = paste0("induced_bias_res_",id,".RDS"))
+}
 
 ########################
 # COMPUTE BIAS/MSE/VAR #
 ########################
 
-dfResVar <- as.data.frame(rbindlist(list(computeDfVar(approxList = dfResList[[type_statistic_plot]][[comp_statistic_plot]][c("Block")],
-                                                      trueStatistics = dfResList[[type_statistic_plot]][[comp_statistic_plot]]$trueStatistics[rep(1:nrow(dfResList[[type_statistic_plot]][[comp_statistic_plot]]$trueStatistics), times = length(possible_cardinalities)),],
-                                                      dependentVar = possible_cardinalities,
-                                                      dependentVarName = "CardinalityRadius"),
-                                         computeDfVar(approxList = dfResList[[type_statistic_plot]][[comp_statistic_plot]][c("GibbsPF")],
-                                                      trueStatistics = dfResList[[type_statistic_plot]][[comp_statistic_plot]]$trueStatistics[rep(1:nrow(dfResList[[type_statistic_plot]][[comp_statistic_plot]]$trueStatistics), times = length(possible_radius)),],
-                                                      dependentVar = pmin((possible_radius*2+1),rep(dimension,length(possible_radius))), #Radius 0 corresponds to cardinality 1, radius 1 corresponds to cardinality 3 and so on
-                                                      dependentVarName = "CardinalityRadius")
-                                         )))
-dfResVar <- as.data.frame(rbindlist(lapply(c(0,possible_cardinalities), function(card) {
-  if(card == 0) return(dfResVar)
-  computeDfVar(approxList = dfResList[[type_statistic_plot]][[comp_statistic_plot]][c("Kalman","SIR")],
-               trueStatistics = dfResList[[type_statistic_plot]][[comp_statistic_plot]]$trueStatistics,
-               dependentVar = card,
-               dependentVarName = "CardinalityRadius")
-})))
-
-dfResBiasMSETrue <- as.data.frame(rbindlist(list(computeDfBiasMSE(approxList = dfResList[[type_statistic_plot]][[comp_statistic_plot]][c("Block")],
-                                                                  trueStatistics = dfResList[[type_statistic_plot]][[comp_statistic_plot]]$trueStatistics[rep(1:nrow(dfResList[[type_statistic_plot]][[comp_statistic_plot]]$trueStatistics), times = length(possible_cardinalities)),],
-                                                                  dependentVar = possible_cardinalities,
-                                                                  dependentVarName = "CardinalityRadius"),
-                                                 computeDfBiasMSE(approxList = dfResList[[type_statistic_plot]][[comp_statistic_plot]][c("GibbsPF")],
-                                                                  trueStatistics = dfResList[[type_statistic_plot]][[comp_statistic_plot]]$trueStatistics[rep(1:nrow(dfResList[[type_statistic_plot]][[comp_statistic_plot]]$trueStatistics), times = length(possible_radius)),],
-                                                                  dependentVar = pmin((possible_radius*2+1),rep(dimension,length(possible_radius))),
-                                                                  dependentVarName = "CardinalityRadius")
-)))
-dfResBiasMSETrue <- as.data.frame(rbindlist(lapply(c(0,possible_cardinalities), function(card) {
-  if(card == 0) return(dfResBiasMSETrue)
-  computeDfBiasMSE(approxList = dfResList[[type_statistic_plot]][[comp_statistic_plot]][c("Kalman","SIR")],
-               trueStatistics = dfResList[[type_statistic_plot]][[comp_statistic_plot]]$trueStatistics,
-               dependentVar = card,
-               dependentVarName = "CardinalityRadius")
-})))
-
-dfResBiasMSEData <- as.data.frame(rbindlist(list(computeDfBiasMSE(approxList = dfResList[[type_statistic_plot]][[comp_statistic_plot]][c("Block")],
-                                                                  trueStatistics = dfResList[[type_statistic_plot]][[comp_statistic_plot]]$dataStatistics[rep(1:nrow(dfResList[[type_statistic_plot]][[comp_statistic_plot]]$dataStatistics), times = length(possible_cardinalities)),],
-                                                                  dependentVar = possible_cardinalities,
-                                                                  dependentVarName = "CardinalityRadius"),
-                                                 computeDfBiasMSE(approxList = dfResList[[type_statistic_plot]][[comp_statistic_plot]][c("GibbsPF")],
-                                                                  trueStatistics = dfResList[[type_statistic_plot]][[comp_statistic_plot]]$dataStatistics[rep(1:nrow(dfResList[[type_statistic_plot]][[comp_statistic_plot]]$dataStatistics), times = length(possible_radius)),],
-                                                                  dependentVar = pmin((possible_radius*2+1),rep(dimension,length(possible_radius))),
-                                                                  dependentVarName = "CardinalityRadius")
-)))
-dfResBiasMSEData <- as.data.frame(rbindlist(lapply(c(0,possible_cardinalities), function(card) {
-  if(card == 0) return(dfResBiasMSEData)
-  computeDfBiasMSE(approxList = dfResList[[type_statistic_plot]][[comp_statistic_plot]][c("Kalman","SIR")],
-                   trueStatistics = dfResList[[type_statistic_plot]][[comp_statistic_plot]]$dataStatistics,
+dfResBiasVar <- lapply(c("mean","sum","mean_squared","sum_squared"), function(type_statistic){
+  if(type_statistic == "sum" || type_statistic == "sum_squared") {
+    possible_comp_statistic <- 1
+  } else {
+    possible_comp_statistic <- 1:dimension
+  }
+  dfResBiasVarComp <- lapply(possible_comp_statistic, function(comp_statistic) {
+    dfResVar <- as.data.frame(rbindlist(list(computeDfVar(approxList = dfResList[[type_statistic]][[comp_statistic]][c("Block")],
+                                                          trueStatistics = dfResList[[type_statistic]][[comp_statistic]]$trueStatistics[rep(1:nrow(dfResList[[type_statistic]][[comp_statistic]]$trueStatistics), times = length(possible_cardinalities)),],
+                                                          dependentVar = possible_cardinalities,
+                                                          dependentVarName = "CardinalityRadius"),
+                                             computeDfVar(approxList = dfResList[[type_statistic]][[comp_statistic]][c("GibbsPF")],
+                                                          trueStatistics = dfResList[[type_statistic]][[comp_statistic]]$trueStatistics[rep(1:nrow(dfResList[[type_statistic]][[comp_statistic]]$trueStatistics), times = length(possible_radius)),],
+                                                          dependentVar = pmin((possible_radius*2+1),rep(dimension,length(possible_radius))), #Radius 0 corresponds to cardinality 1, radius 1 corresponds to cardinality 3 and so on
+                                                          dependentVarName = "CardinalityRadius")
+    )))
+    dfResVar <- as.data.frame(rbindlist(lapply(c(0,possible_cardinalities), function(card) {
+      if(card == 0) return(dfResVar)
+      computeDfVar(approxList = dfResList[[type_statistic]][[comp_statistic]][c("Kalman","SIR")],
+                   trueStatistics = dfResList[[type_statistic]][[comp_statistic]]$trueStatistics,
                    dependentVar = card,
                    dependentVarName = "CardinalityRadius")
-})))
+    })))
 
+    dfResBiasMSETrue <- as.data.frame(rbindlist(list(computeDfBiasMSE(approxList = dfResList[[type_statistic]][[comp_statistic]][c("Block")],
+                                                                      trueStatistics = dfResList[[type_statistic]][[comp_statistic]]$trueStatistics[rep(1:nrow(dfResList[[type_statistic]][[comp_statistic]]$trueStatistics), times = length(possible_cardinalities)),],
+                                                                      dependentVar = possible_cardinalities,
+                                                                      dependentVarName = "CardinalityRadius"),
+                                                     computeDfBiasMSE(approxList = dfResList[[type_statistic]][[comp_statistic]][c("GibbsPF")],
+                                                                      trueStatistics = dfResList[[type_statistic]][[comp_statistic]]$trueStatistics[rep(1:nrow(dfResList[[type_statistic]][[comp_statistic]]$trueStatistics), times = length(possible_radius)),],
+                                                                      dependentVar = pmin((possible_radius*2+1),rep(dimension,length(possible_radius))),
+                                                                      dependentVarName = "CardinalityRadius")
+    )))
+    dfResBiasMSETrue <- as.data.frame(rbindlist(lapply(c(0,possible_cardinalities), function(card) {
+      if(card == 0) return(dfResBiasMSETrue)
+      computeDfBiasMSE(approxList = dfResList[[type_statistic]][[comp_statistic]][c("Kalman","SIR")],
+                       trueStatistics = dfResList[[type_statistic]][[comp_statistic]]$trueStatistics,
+                       dependentVar = card,
+                       dependentVarName = "CardinalityRadius")
+    })))
+
+    dfResBiasMSEData <- as.data.frame(rbindlist(list(computeDfBiasMSE(approxList = dfResList[[type_statistic]][[comp_statistic]][c("Block")],
+                                                                      trueStatistics = dfResList[[type_statistic]][[comp_statistic]]$dataStatistics[rep(1:nrow(dfResList[[type_statistic]][[comp_statistic]]$dataStatistics), times = length(possible_cardinalities)),],
+                                                                      dependentVar = possible_cardinalities,
+                                                                      dependentVarName = "CardinalityRadius"),
+                                                     computeDfBiasMSE(approxList = dfResList[[type_statistic]][[comp_statistic]][c("GibbsPF")],
+                                                                      trueStatistics = dfResList[[type_statistic]][[comp_statistic]]$dataStatistics[rep(1:nrow(dfResList[[type_statistic]][[comp_statistic]]$dataStatistics), times = length(possible_radius)),],
+                                                                      dependentVar = pmin((possible_radius*2+1),rep(dimension,length(possible_radius))),
+                                                                      dependentVarName = "CardinalityRadius")
+    )))
+    dfResBiasMSEData <- as.data.frame(rbindlist(lapply(c(0,possible_cardinalities), function(card) {
+      if(card == 0) return(dfResBiasMSEData)
+      computeDfBiasMSE(approxList = dfResList[[type_statistic]][[comp_statistic]][c("Kalman","SIR")],
+                       trueStatistics = dfResList[[type_statistic]][[comp_statistic]]$dataStatistics,
+                       dependentVar = card,
+                       dependentVarName = "CardinalityRadius")
+    })))
+    return(list(dfResVar=dfResVar,
+                dfResBiasMSEData=dfResBiasMSEData,
+                dfResBiasMSETrue=dfResBiasMSETrue))
+  })
+  return(dfResBiasVarComp)
+})
+names(dfResBiasVar) <- c("mean","sum","mean_squared","sum_squared")
+
+if(Sys.info()["nodename"] == "greyplover.stats.ox.ac.uk" || Sys.info()["nodename"] == "greypartridge.stats.ox.ac.uk" ||
+   Sys.info()["nodename"] == "greyheron.stats.ox.ac.uk" || Sys.info()["nodename"] == "greywagtail.stats.ox.ac.uk") {
+  saveRDS(dfResBiasVar, file = paste0("induced_bias_res_biasvar_",id,".RDS"))
+}
 
 #########
 # PLOTS #
 #########
 
-dfBiasMSEToPlot <- dfResBiasMSEData
+dfVarToPlot <- dfResBiasVar[[type_statistic_plot]][[comp_statistic_plot]]$dfResVar
+dfBiasMSEToPlot <- dfResBiasVar[[type_statistic_plot]][[comp_statistic_plot]]$dfResBiasMSEData
 
 #Variance
-ggplot(dfResVar[dfResVar$Type == "Var",], aes(x = CardinalityRadius, y=Value, color = Algorithm)) +
+ggplot(dfVarToPlot[dfVarToPlot$Type == "Var",], aes(x = CardinalityRadius, y=Value, color = Algorithm)) +
   geom_point(size = 3) +  scale_colour_brewer(palette = "Set1") +
   geom_smooth(method="lm",se=FALSE, size = 1.5) +
   ylab("Variance")
