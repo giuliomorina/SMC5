@@ -90,7 +90,7 @@ computeDfVar <- function(approxList, trueStatistics, dependentVar, dependentVarN
                       stringsAsFactors = FALSE)
   for(k in 1:length(approxList)) {
     approxStatisticPF <- approxList[[k]]
-    for(i in 1:nrow(trueStatistics)) {
+    for(i in 1:nrow(approxStatisticPF)) {
       estAll <- list(
         #Bias = mean(approxStatisticPF[i,]-trueStatistics[i,]),
         #RelAbsBias = mean(abs((approxStatisticPF[i,]-trueStatistics[i,])/trueStatistics[i,])),
@@ -150,16 +150,27 @@ computeDfBiasMSE <- function(approxList, trueStatistics, dependentVar, dependent
                       Value= numeric(),
                       stringsAsFactors = FALSE)
   for(k in 1:length(approxList)) {
-    for(i in 1:nrow(approxList[[k]])) {
-      for(j in 1:ncol(approxList[[k]])) {
-        dfRes <- rbindlist(list(dfRes, data.frame(Repetition = j,
-                                                  DependentVar = dependentVar[i],
-                                                  Algorithm = names(approxList[k]),
-                                                  Type = "Bias",
-                                                  Value= approxList[[k]][i,j] - trueStatistics[i,j],
-                                                  stringsAsFactors = FALSE)))
-      }
+    approxStatisticPF <- approxList[[k]]
+    if(is.vector(approxStatisticPF)) {
+      approxStatisticPF <- matrix(approxStatisticPF, nrow=1)
     }
+    dfRes <- rbindlist(lapply(0:length(approxStatisticPF), function(ind) {
+      if(ind == 0) return(dfRes)
+      i <- arrayInd(ind, dim(approxStatisticPF))[1]
+      j <- arrayInd(ind, dim(approxStatisticPF))[2]
+      estAll <- list(
+        Bias = mean(approxStatisticPF[i,j]-trueStatistics[i,j]),
+        RelAbsBias = mean(abs((approxStatisticPF[i,j]-trueStatistics[i,j])/trueStatistics[i,j])),
+        MSE = mean((approxStatisticPF[i,j]-trueStatistics[i,j])^2),
+        RMSE = sqrt(mean((approxStatisticPF[i,j]-trueStatistics[i,j])^2))
+      )
+      return(data.frame(Repetition = rep(j, 4),
+                        DependentVar = rep(dependentVar[i], 4),
+                        Algorithm = rep(names(approxList[k]), 4),
+                        Type = c("Bias","RelAbsBias","MSE","RMSE"),
+                        Value= unlist(estAll),
+                        stringsAsFactors = FALSE))
+    }))
   }
   colnames(dfRes) <- c("Repetition", "DependentVar", "Algorithm", "Type", "Value")
   dfRes <- as.data.frame(dfRes)

@@ -12,5 +12,5 @@ LinkingTo: Rcpp, RcppArmadillo
 RoxygenNote: 6.0.1
 Suggests: knitr,
     rmarkdown
-Depends: binhf, mvtnorm, data.table
+Depends: mvtnorm, data.table, emuR
 VignetteBuilder: knitr

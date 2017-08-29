@@ -16,7 +16,7 @@ set.seed(88,"L'Ecuyer-CMRG")
 n <- 1 #Filter time
 possible_dimension <- 1:50 #Possible dimensions. Need to be contiguous and start from 1!
 ncores <- 1
-repetitions <- 100
+repetitions <- 10
 N <- 20 #Number of particles
 A_diag <- 1 #Elements on the diagonal of A
 varX <- 1 #Variance of sigmaX
@@ -85,12 +85,6 @@ expRes <- lapply(possible_dimension, function(dimension) {
 #########################
 # APPROXIMATE STATISTIC #
 #########################
-
-if(Sys.info()["nodename"] == "greyplover.stats.ox.ac.uk" || Sys.info()["nodename"] == "greypartridge.stats.ox.ac.uk" ||
-   Sys.info()["nodename"] == "greyheron.stats.ox.ac.uk" || Sys.info()["nodename"] == "greywagtail.stats.ox.ac.uk") {
-  #If on the server, compute all the statistics!
-  type_statistic <- c("mean", "sum", "mean_squared", "sum_squared")
-}
 
 dfResList <- lapply(c("mean","sum","mean_squared","sum_squared"), function(type_statistic){
   if(type_statistic == "sum" || type_statistic == "sum_squared") {
@@ -170,30 +164,80 @@ if(Sys.info()["nodename"] == "greyplover.stats.ox.ac.uk" || Sys.info()["nodename
 # COMPUTE BIAS/MSE/VAR #
 ########################
 
-dfResVarData <- computeDfVar(approxList = dfResList[[type_statistic_plot]][[comp_statistic_plot]][c("SIR","Block","GibbsPF","Kalman")],
-                      trueStatistics = dfResList[[type_statistic_plot]][[comp_statistic_plot]]$dataStatistics,
-                      dependentVar = possible_dimension,
-                      dependentVarName = "Dimension")
-dfResVarTrue <- computeDfVar(approxList = dfResList[[type_statistic_plot]][[comp_statistic_plot]][c("SIR","Block","GibbsPF","Kalman")],
-                          trueStatistics = dfResList[[type_statistic_plot]][[comp_statistic_plot]]$trueStatistics,
-                          dependentVar = possible_dimension,
-                          dependentVarName = "Dimension")
+dfResBiasVar <- lapply(c("mean","sum","mean_squared","sum_squared"), function(type_statistic){
+  if(type_statistic == "sum" || type_statistic == "sum_squared") {
+    possible_comp_statistic <- 1
+  } else {
+    possible_comp_statistic <- 1:min(possible_dimension)
+  }
+  dfResBiasVarComp <- lapply(possible_comp_statistic, function(comp_statistic) {
 
-dfResBiasMSEData <- computeDfBiasMSE(approxList = dfResList[[type_statistic_plot]][[comp_statistic_plot]][c("SIR","Block","GibbsPF","Kalman")],
-                                     trueStatistics = dfResList[[type_statistic_plot]][[comp_statistic_plot]]$dataStatistics,
-                                     dependentVar = possible_dimension,
-                                     dependentVarName = "Dimension")
-dfResBiasMSETrue <- computeDfBiasMSE(approxList = dfResList[[type_statistic_plot]][[comp_statistic_plot]][c("SIR","Block","GibbsPF","Kalman")],
-                                     trueStatistics = dfResList[[type_statistic_plot]][[comp_statistic_plot]]$trueStatistics,
-                                     dependentVar = possible_dimension,
-                                     dependentVarName = "Dimension")
+    dfResVar <- computeDfVar(approxList = dfResList[[type_statistic]][[comp_statistic]][c("SIR","Block","GibbsPF","Kalman")],
+                             trueStatistics = dfResList[[type_statistic]][[comp_statistic]]$dataStatistics,
+                             dependentVar = possible_dimension,
+                             dependentVarName = "Dimension")
+
+    dfResBiasMSEData <- computeDfBiasMSE(approxList = dfResList[[type_statistic]][[comp_statistic]][c("SIR","Block","GibbsPF","Kalman")],
+                                         trueStatistics = dfResList[[type_statistic]][[comp_statistic]]$dataStatistics,
+                                         dependentVar = possible_dimension,
+                                         dependentVarName = "Dimension")
+    dfResBiasMSETrue <- computeDfBiasMSE(approxList = dfResList[[type_statistic]][[comp_statistic]][c("SIR","Block","GibbsPF","Kalman")],
+                                         trueStatistics = dfResList[[type_statistic]][[comp_statistic]]$trueStatistics,
+                                         dependentVar = possible_dimension,
+                                         dependentVarName = "Dimension")
+
+    return(list(dfResVar=dfResVar,
+                dfResBiasMSEData=dfResBiasMSEData,
+                dfResBiasMSETrue=dfResBiasMSETrue))
+  })
+  return(dfResBiasVarComp)
+})
+names(dfResBiasVar) <- c("mean","sum","mean_squared","sum_squared")
+
+if(Sys.info()["nodename"] == "greyplover.stats.ox.ac.uk" || Sys.info()["nodename"] == "greypartridge.stats.ox.ac.uk" ||
+   Sys.info()["nodename"] == "greyheron.stats.ox.ac.uk" || Sys.info()["nodename"] == "greywagtail.stats.ox.ac.uk") {
+  saveRDS(dfResBiasVar, file = paste0("curse_of_dimensionality_res_biasvar_",sample(1e7,size = 1),".RDS"))
+}
+
+
+########################
+# MEAN MAXIMUM WEIGHTS #
+########################
+
+maxWeightSIR <- matrix(NA, nrow=length(possible_dimension), ncol=repetitions)
+
+for(dim in possible_dimension) {
+  for(rep in 1:repetitions) {
+    maxWeightSIR[dim,] <- sapply(expRes[[dim]]$res, function(res_rep) {
+      max(exp(res_rep$SIRRes$filteringLogWeights[n,1,]-logAdditionSum(res_rep$SIRRes$filteringLogWeights[n,1,])))
+    })
+  }
+}
+
+dfWeights <- data.frame(Algorithm = character(),
+                        Time = numeric(),
+                        Repetition = numeric(),
+                        Value = numeric(),
+                        stringsAsFactors = FALSE)
+for(rep in 1:repetitions) {
+  for(dim in possible_dimension) {
+    dfWeights <- rbind(dfWeights,c(Algorithm = "SIR",
+                                   Dimension = dim,
+                                   Repetition = rep,
+                                   Value = maxWeightSIR[dim,rep]),
+                       stringsAsFactors = FALSE)
+  }
+}
+colnames(dfWeights) <- c("Algorithm","Dimension","Repetition", "Value")
+dfWeights$Algorithm <- as.factor(dfWeights$Algorithm)
+
 
 ########
 # PLOT #
 ########
 
-dfVarToPlot <- dfResVarTrue
-dfBiasMSEToPlot <- dfResBiasMSETrue
+dfBiasMSEToPlot <- dfResBiasVar[[type_statistic_plot]][[comp_statistic_plot]]$dfResBiasMSEData
+dfResVarToPlot <-  dfResBiasVar[[type_statistic_plot]][[comp_statistic_plot]]$dfResVar
 
 #Variance
 #Just to check the different type of relative variances:
@@ -203,15 +247,30 @@ dfBiasMSEToPlot <- dfResBiasMSETrue
 # ggplot(dfVarToPlot[dfVarToPlot$Type == "RelVar",], aes(x = Dimension, y=Value, color = Algorithm)) +
 #   geom_line(size = 1.2) +  scale_colour_brewer(palette = "Set1")
 
-ggplot(dfVarToPlot[dfVarToPlot$Type == "RelVar",], aes(x = Dimension, y=Value, color = Algorithm)) +
-  geom_point(size = 1.2) +  scale_colour_brewer(palette = "Set1") +
-  geom_smooth(method="lm",se=FALSE)
+ggplot(dfResVarToPlot[dfResVarToPlot$Type == "RelVar",], aes(x = Dimension, y=Value, color = Algorithm)) +
+  geom_point(size = 3) +  scale_colour_brewer(palette = "Set1") +
+  geom_smooth(method="lm",se=FALSE, size = 1.5)
 
 #Bias
 # ggplot(dfBiasMSEToPlot[dfBiasMSEToPlot$Type == "Bias",], aes(x = as.numeric(Dimension), y=abs(Value), color = Algorithm)) + geom_line() +
 #   scale_colour_brewer(palette = "Set1")
 
-ggplot(dfBiasMSEToPlot[dfBiasMSEToPlot$Type == "Bias",], aes(x = Dimension, y=Value, color = Algorithm)) +
+ggplot(dfBiasMSEToPlot[dfBiasMSEToPlot$Type == "RelAbsBias",], aes(x = Dimension, y=Value, color = Algorithm)) +
   scale_colour_brewer(palette = "Set1") +
-  geom_smooth(method="lm",se=TRUE) + geom_hline(yintercept = 0, linetype="dashed")
+  stat_summary(fun.y = mean,
+               fun.ymin = function(x) mean(x) - sd(x),
+               fun.ymax = function(x) mean(x) + sd(x),
+               geom = "pointrange") +
+  stat_summary(fun.y = mean,
+               geom = "line") +
+  #geom_smooth(method="lm",se=TRUE) + geom_hline(yintercept = 0, linetype="dashed") +
+  ylab("Rel. Abs. Bias")
 
+#Maximum Weights
+ggplot(dfWeights, aes(x=as.numeric(Dimension), y=as.numeric(Value), color=Algorithm)) +
+  geom_hline(yintercept = 1, linetype="dashed") +
+  stat_summary(fun.y = mean,
+               fun.ymin = function(x) mean(x) - sd(x),
+               fun.ymax = function(x) mean(x) + sd(x),
+               geom = "pointrange") +
+  scale_colour_brewer(palette = "Set1")

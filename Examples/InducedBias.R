@@ -20,7 +20,7 @@ set.seed(878,"L'Ecuyer-CMRG")
 n <- 10 #Filter time (NOTE: the experiment is still performed in one time step)
 dimension <- 8
 ncores <- 2
-repetitions <- 10
+repetitions <- 1000
 N <- 50 #Number of particles
 A <- generateA(c(0,0,0,0.6), dimension)
 sigmaX <- diag(rep(1,dimension))
@@ -28,9 +28,12 @@ sigmaY <- diag(rep(1,dimension))
 X0 <- rep(0, dimension)
 possible_cardinalities <- 1:dimension
 possible_radius <- (0:floor(dimension/2))
-type_statistic <- "sum_squared"
-comp_statistic <- 1 #Used for type_statistic mean or mean_squared
 m <- 10 #Number of sweeps
+type_statistic_plot <- "sum_squared" #Which statistic to plot
+comp_statistic_plot <- 6 #Which component of the statistic (must be 1 for sum and sum squared)
+if(type_statistic_plot == "sum" || type_statistic_plot == "sum_squared") {
+  comp_statistic_plot <- 1
+}
 
 ###################
 # GENERATE X DATA #
@@ -40,13 +43,11 @@ dataset <- generateData(n, A, X0, sigmaX, sigmaY)
 X_data <- matrix(dataset$X_data, ncol=dimension)
 fParams <- list(A=A, X0=X0, sigmaX=sigmaX)
 
-################################
-# RUN BLOCK & APPROX STATISTIC #
-################################
+##############################
+# RUN BLOCK/GIBBS/SIR/KALMAN #
+##############################
 
-#We immediately approximate the statistics as otherwise it becomes too big.
-
-resStats <- mclapply(1:repetitions, function(rep) {
+expRes <- mclapply(1:repetitions, function(rep) {
   #Generate new Y data
   Y_data <- generateY(X_data, sigmaY)
   gParams <- list(Y=Y_data, sigmaY=sigmaY)
@@ -63,83 +64,238 @@ resStats <- mclapply(1:repetitions, function(rep) {
     kalmanParticles[aux,,] <- t(mvrnormArma(N,mean = kalmanFilterRes$m[,aux+1], sigma = as.matrix(kalmanFilterRes$C[,,aux+1])))
   }
   #Approximate statistic for each cardinality
-  res <- lapply(possible_cardinalities, function(card) {
+  resBlock <- lapply(possible_cardinalities, function(card) {
     blocks <- split(1:dimension,ceiling((1:dimension)/card))
-    #Run SIR
+    #Run Block
     BlockRes <- blockParticleFilterOnline(N=N, n=n, blocks = blocks,
                                           particles = kalmanParticles[1:(n-1),,],
                                           logWeights = array(log(1/N),c(n-1,length(blocks),N)),
-                                   fParams = fParams, gParams = gParams)
-    #Approx statistic
-    BlockStat <- computeApproxStatisticFilter(particles = BlockRes$filteringParticle,
-                                              logWeights = BlockRes$filteringLogWeights,
-                                              n = n,
-                                              blocks = blocks,
-                                              type = type_statistic,
-                                              comp = comp_statistic)
+                                          fParams = fParams, gParams = gParams)
 
-    return(list(BlockStat = BlockStat))
+
+    return(list(BlockRes = BlockRes, blocks = blocks))
   })
   resGibbs <- lapply(possible_radius, function(radius) {
     #Rub Gibbs PF
-    GibbsPFRes <- gibbsParticleFilter(N=N, n=n, m=m, radius=radius,
-                                      fParams = fParams, gParams=gParams)
-    #Approx statistic
-    GibbsPFStat <- computeApproxStatisticFilter(particles = GibbsPFRes$filteringParticle,
-                                              logWeights = GibbsPFRes$filteringLogWeights,
-                                              n = n,
-                                              type = type_statistic,
-                                              comp = comp_statistic)
+    GibbsPFRes <- gibbsParticleFilterOnline(N=N, n=n, m=m, radius=radius,
+                                            particles = kalmanParticles[1:(n-1),,],
+                                            fParams = fParams, gParams=gParams)
 
-    return(list(GibbsPFStat = GibbsPFStat))
+
+    return(list(GibbsPFRes = GibbsPFRes))
   })
+  resSIR <- bootstrapParticleFilterOnline(N=N, n=n, fParams = fParams,
+                                               particles = kalmanParticles[1:(n-1),,],
+                                               logWeights = array(log(1/N),c(n-1,1,N)),
+                                         gParams = gParams)
+  resKalman <- list(filteringParticle = kalmanParticles,
+                    filteringLogWeights = array(log(1/N),c(n,1,N)))
   return(list(gParams=gParams,
               fParams = fParams,
               X_data = X_data,
-         res=res,
-         resGibbs = resGibbs))
+              resBlock=resBlock,
+              resGibbs = resGibbs,
+              resKalman=resKalman,
+              resSIR = resSIR))
 }, mc.cores = ncores)
 
 #########################
 # APPROXIMATE STATISTIC #
 #########################
 
-approxStatisticBlock <- matrix(NA, nrow=length(possible_cardinalities), ncol=repetitions)
-approxStatisticGibbsPF <- matrix(NA, nrow=length(possible_radius), ncol=repetitions)
-
-for(rep in 1:repetitions) {
-  approxStatisticBlock[,rep] <- sapply(resStats[[rep]]$res, function(res) {
-    return(res$BlockStat)
-  })
-  for(radius in possible_radius) {
-    approxStatisticGibbsPF[radius+1,rep] <- resStats[[rep]]$resGibbs[[radius+1]]$GibbsPFStat
+dfResList <- lapply(c("mean","sum","mean_squared","sum_squared"), function(type_statistic){
+  if(type_statistic == "sum" || type_statistic == "sum_squared") {
+    possible_comp_statistic <- NA
+  } else {
+    possible_comp_statistic <- 1:dimension
   }
-}
-trueStatistics <- rep(computeTrueStatisticFilter(X_data = resStats[[1]]$X_data, n=n,
-                                                 type = type_statistic, comp = comp_statistic), length(possible_cardinalities))
+  dfResComp <- lapply(possible_comp_statistic, function(comp_statistic) {
+    approxStatisticBlock <- matrix(NA, nrow=length(possible_cardinalities), ncol=repetitions)
+    approxStatisticGibbs <- matrix(NA, nrow=length(possible_radius), ncol=repetitions)
+    approxStatisticKalman <- matrix(NA, nrow=1, ncol=repetitions)
+    approxStatisticKalman[1,] <- sapply(expRes, function(res) {
+      computeApproxStatisticFilter(particles = res$resKalman$filteringParticle,
+                                   logWeights = res$resKalman$filteringLogWeights,
+                                   n = n,
+                                   type = type_statistic,
+                                   comp = comp_statistic)
+    })
+    approxStatisticSIR <- matrix(NA, nrow=1, ncol=repetitions)
+    approxStatisticSIR[1,] <- sapply(expRes, function(res) {
+      computeApproxStatisticFilter(particles = res$resSIR$filteringParticle,
+                                   logWeights = res$resSIR$filteringLogWeights,
+                                   n = n,
+                                   type = type_statistic,
+                                   comp = comp_statistic)
+    })
+    trueStatistics <- matrix(NA, nrow=1, ncol=repetitions)
+    trueStatistics[1,] <- sapply(expRes, function(res) {
+      return(computeKalmanStatisticFilter(fParams=res$fParams,
+                                          gParams = res$gParams,
+                                          n = n,
+                                          type = type_statistic,
+                                          comp = comp_statistic))
+    })
+    dataStatistics <- computeTrueStatisticFilter(X_data = expRes[[1]]$X_data,
+                                                  n = n, type = type_statistic, comp = comp_statistic)
+    dataStatistics <- matrix(dataStatistics, ncol=repetitions)
+    counter <- 1
+    for(rep in 1:repetitions) {
+      approxStatisticBlock[,counter] <- sapply(expRes[[rep]]$resBlock, function(res) {
+        return(computeApproxStatisticFilter(particles = res$BlockRes$filteringParticle,
+                                            logWeights = res$BlockRes$filteringLogWeights,
+                                            n = n,
+                                            blocks = res$blocks,
+                                            type = type_statistic,
+                                            comp = comp_statistic))
+      })
+      approxStatisticGibbs[,counter] <- sapply(expRes[[rep]]$resGibbs, function(res) {
+        return(computeApproxStatisticFilter(particles = res$GibbsPFRes$filteringParticle,
+                                            logWeights = res$GibbsPFRes$filteringLogWeights,
+                                            n = n,
+                                            type = type_statistic,
+                                            comp = comp_statistic))
+      })
+      counter <- counter + 1
+    }
+    return(list(Block=approxStatisticBlock,
+                GibbsPF=approxStatisticGibbs,
+                Kalman=approxStatisticKalman,
+                SIR=approxStatisticSIR,
+                trueStatistics=trueStatistics,
+                dataStatistics=dataStatistics))
+  })
+  return(dfResComp)
+})
+names(dfResList) <- c("mean","sum","mean_squared","sum_squared")
+
+#dfResList[[TYPE]][[COMPONENT]]$Block[CARDINALITY,REPETITION]
+#dfResList[[TYPE]][[COMPONENT]]$GibbsPF[RADIUS,REPETITION]
+#dfResList[[TYPE]][[COMPONENT]]$Kalman
+#dfResList[[TYPE]][[COMPONENT]]$trueStatistics[REPETITION]
+
 
 ########################
 # COMPUTE BIAS/MSE/VAR #
 ########################
 
-dfRes <- computeDfBiasVar(approxStatisticPF = approxStatisticBlock, trueStatistics = trueStatistics,
-                          algorithmName = "Block", dependentVarName = "Cardinality")
-dfResGibbs <- computeDfBiasVar(approxStatisticPF = approxStatisticGibbsPF, trueStatistics = trueStatistics[1:nrow(approxStatisticGibbsPF)],
-                          algorithmName = "GibbsPF", dependentVarName = "Cardinality")
+dfResVar <- as.data.frame(rbindlist(list(computeDfVar(approxList = dfResList[[type_statistic_plot]][[comp_statistic_plot]][c("Block")],
+                                                      trueStatistics = dfResList[[type_statistic_plot]][[comp_statistic_plot]]$trueStatistics[rep(1:nrow(dfResList[[type_statistic_plot]][[comp_statistic_plot]]$trueStatistics), times = length(possible_cardinalities)),],
+                                                      dependentVar = possible_cardinalities,
+                                                      dependentVarName = "CardinalityRadius"),
+                                         computeDfVar(approxList = dfResList[[type_statistic_plot]][[comp_statistic_plot]][c("GibbsPF")],
+                                                      trueStatistics = dfResList[[type_statistic_plot]][[comp_statistic_plot]]$trueStatistics[rep(1:nrow(dfResList[[type_statistic_plot]][[comp_statistic_plot]]$trueStatistics), times = length(possible_radius)),],
+                                                      dependentVar = pmin((possible_radius*2+1),rep(dimension,length(possible_radius))), #Radius 0 corresponds to cardinality 1, radius 1 corresponds to cardinality 3 and so on
+                                                      dependentVarName = "CardinalityRadius")
+                                         )))
+dfResVar <- as.data.frame(rbindlist(lapply(c(0,possible_cardinalities), function(card) {
+  if(card == 0) return(dfResVar)
+  computeDfVar(approxList = dfResList[[type_statistic_plot]][[comp_statistic_plot]][c("Kalman","SIR")],
+               trueStatistics = dfResList[[type_statistic_plot]][[comp_statistic_plot]]$trueStatistics,
+               dependentVar = card,
+               dependentVarName = "CardinalityRadius")
+})))
 
-########
-# PLOT #
-########
+dfResBiasMSETrue <- as.data.frame(rbindlist(list(computeDfBiasMSE(approxList = dfResList[[type_statistic_plot]][[comp_statistic_plot]][c("Block")],
+                                                                  trueStatistics = dfResList[[type_statistic_plot]][[comp_statistic_plot]]$trueStatistics[rep(1:nrow(dfResList[[type_statistic_plot]][[comp_statistic_plot]]$trueStatistics), times = length(possible_cardinalities)),],
+                                                                  dependentVar = possible_cardinalities,
+                                                                  dependentVarName = "CardinalityRadius"),
+                                                 computeDfBiasMSE(approxList = dfResList[[type_statistic_plot]][[comp_statistic_plot]][c("GibbsPF")],
+                                                                  trueStatistics = dfResList[[type_statistic_plot]][[comp_statistic_plot]]$trueStatistics[rep(1:nrow(dfResList[[type_statistic_plot]][[comp_statistic_plot]]$trueStatistics), times = length(possible_radius)),],
+                                                                  dependentVar = pmin((possible_radius*2+1),rep(dimension,length(possible_radius))),
+                                                                  dependentVarName = "CardinalityRadius")
+)))
+dfResBiasMSETrue <- as.data.frame(rbindlist(lapply(c(0,possible_cardinalities), function(card) {
+  if(card == 0) return(dfResBiasMSETrue)
+  computeDfBiasMSE(approxList = dfResList[[type_statistic_plot]][[comp_statistic_plot]][c("Kalman","SIR")],
+               trueStatistics = dfResList[[type_statistic_plot]][[comp_statistic_plot]]$trueStatistics,
+               dependentVar = card,
+               dependentVarName = "CardinalityRadius")
+})))
 
-dfToPlot <- dfRes
+dfResBiasMSEData <- as.data.frame(rbindlist(list(computeDfBiasMSE(approxList = dfResList[[type_statistic_plot]][[comp_statistic_plot]][c("Block")],
+                                                                  trueStatistics = dfResList[[type_statistic_plot]][[comp_statistic_plot]]$dataStatistics[rep(1:nrow(dfResList[[type_statistic_plot]][[comp_statistic_plot]]$dataStatistics), times = length(possible_cardinalities)),],
+                                                                  dependentVar = possible_cardinalities,
+                                                                  dependentVarName = "CardinalityRadius"),
+                                                 computeDfBiasMSE(approxList = dfResList[[type_statistic_plot]][[comp_statistic_plot]][c("GibbsPF")],
+                                                                  trueStatistics = dfResList[[type_statistic_plot]][[comp_statistic_plot]]$dataStatistics[rep(1:nrow(dfResList[[type_statistic_plot]][[comp_statistic_plot]]$dataStatistics), times = length(possible_radius)),],
+                                                                  dependentVar = pmin((possible_radius*2+1),rep(dimension,length(possible_radius))),
+                                                                  dependentVarName = "CardinalityRadius")
+)))
+dfResBiasMSEData <- as.data.frame(rbindlist(lapply(c(0,possible_cardinalities), function(card) {
+  if(card == 0) return(dfResBiasMSEData)
+  computeDfBiasMSE(approxList = dfResList[[type_statistic_plot]][[comp_statistic_plot]][c("Kalman","SIR")],
+                   trueStatistics = dfResList[[type_statistic_plot]][[comp_statistic_plot]]$dataStatistics,
+                   dependentVar = card,
+                   dependentVarName = "CardinalityRadius")
+})))
 
-#Bias
-ggplot(dfToPlot[dfToPlot$Type == "Bias",], aes(x = Cardinality, y=Value, color = Algorithm)) +
-  geom_point(size = 1.2) +  scale_colour_brewer(palette = "Set1") +
-  geom_smooth(method="loess",se=TRUE) + geom_hline(yintercept = 0, linetype="dashed")
+
+#########
+# PLOTS #
+#########
+
+dfBiasMSEToPlot <- dfResBiasMSEData
 
 #Variance
-ggplot(dfToPlot[dfToPlot$Type == "Var",], aes(x = Cardinality, y=Value, color = Algorithm)) +
-  geom_point(size = 1.2) +  scale_colour_brewer(palette = "Set1") +
-  geom_smooth(method="loess",se=TRUE)
+ggplot(dfResVar[dfResVar$Type == "Var",], aes(x = CardinalityRadius, y=Value, color = Algorithm)) +
+  geom_point(size = 3) +  scale_colour_brewer(palette = "Set1") +
+  geom_smooth(method="lm",se=FALSE, size = 1.5) +
+  ylab("Variance")
+
+#Bias
+ggplot(dfBiasMSEToPlot[dfBiasMSEToPlot$Type == "Bias",], aes(x = CardinalityRadius, y=Value, color = Algorithm)) +
+  scale_colour_brewer(palette = "Set1") +
+  stat_summary(fun.y = mean,
+               fun.ymin = function(x) mean(x) - sd(x),
+               fun.ymax = function(x) mean(x) + sd(x),
+               geom = "pointrange") +
+  #geom_smooth(method="loess",se=TRUE) + geom_hline(yintercept = 0, linetype="dashed") +
+  stat_summary(fun.y = mean,
+               geom = "line") +
+  #geom_smooth(method="lm",se=TRUE) + geom_hline(yintercept = 0, linetype="dashed")
+  ylab("Bias")
+
+####################################
+# OTHER PLOTS (INHOMOGENEOUS BIAS) #
+####################################
+
+#For a fixed cardinality and a fixed radius, the bias is not homogeneous in the components
+# -> need to show the relative bias
+
+fixed_card <- 5
+fixed_radius <- 2
+fixed_type_statistic <- "mean_squared"
+dfResBiasMSEComponentData <- data.frame(Repetition = numeric(),
+                                        DependentVar = numeric(),
+                                        Algorithm = character(),
+                                        Type = character(),
+                                        Value= numeric(),
+                                        stringsAsFactors = FALSE)
+colnames(dfResBiasMSEComponentData) <- c("Repetition", "Component", "Algorithm", "Type", "Value")
+for(comp in 1:dimension) {
+  dfResListFixed <- list(dfResList[[fixed_type_statistic]][[comp]][c("Block")][[1]][fixed_card,],
+                    dfResList[[fixed_type_statistic]][[comp]][c("GibbsPF")][[1]][fixed_radius,])
+  names(dfResListFixed) <- c("Block","GibbsPF")
+
+  dfResBiasMSEComponentData <- as.data.frame(rbindlist(list(dfResBiasMSEComponentData,
+                                                computeDfBiasMSE(approxList = dfResListFixed,
+                                                trueStatistics = dfResList[[fixed_type_statistic]][[comp]]$dataStatistics,
+                                                dependentVar = comp,
+                                                dependentVarName = "Component"))))
+}
+
+
+
+dfBiasMSEComponentToPlot <- dfResBiasMSEComponentData
+ggplot(dfBiasMSEComponentToPlot[dfBiasMSEComponentToPlot$Type == "RelAbsBias",], aes(x = Component, y=Value, color = Algorithm)) +
+  scale_colour_brewer(palette = "Set1") +
+  stat_summary(fun.y = mean,
+               fun.ymin = function(x) mean(x) - sd(x),
+               fun.ymax = function(x) mean(x) + sd(x),
+               geom = "pointrange") +
+  #geom_smooth(method="loess",se=TRUE) + geom_hline(yintercept = 0, linetype="dashed") +
+  stat_summary(fun.y = mean,
+               geom = "line") +
+  ylab("Rel. Abs. Bias")
 

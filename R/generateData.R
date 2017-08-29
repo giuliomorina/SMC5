@@ -34,7 +34,7 @@ generateA <- function(neighbour_correlation, dimension) {
   if(length(first_row) > dimension) stop("Dimension must be bigger")
   A <- matrix(first_row, nrow=length(first_row), ncol=length(first_row), byrow = TRUE)
   for(i in 2:length(first_row)) {
-    A[i,] <- shift(first_row,i-1)
+    A[i,] <- emuR::shift(first_row, delta = i-1, circular = TRUE)
   }
   return(A)
 }

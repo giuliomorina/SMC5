@@ -15,10 +15,13 @@ require(ggplot2)
 set.seed(1717)
 n <- 50
 ncores <- 2
-repetitions <- 10000
+repetitions <- 100
 N <- 20
-type_statistic <- "sum_squared"
-comp_statistic <- NA #Used for type_statistic mean or mean_squared
+type_statistic_plot <- "sum_squared" #Which statistic to plot
+comp_statistic_plot <- 2 #Which component of the statistic (must be 1 for sum and sum squared)
+if(type_statistic_plot == "sum" || type_statistic_plot == "sum_squared") {
+  comp_statistic_plot <- 1
+}
 
 ##################
 # GENERATE MODEL #
@@ -31,15 +34,6 @@ sigmaY <- matrix(1, nrow=1, ncol=1) #With a lower variance it should be easier f
 dataset <- generateData(n, A, X0, sigmaX, sigmaY)
 X_data <- matrix(dataset$X_data, ncol=dimension)
 fParams <- list(A=A, X0=X0, sigmaX=sigmaX)
-
-##########################
-# COMPUTE TRUE STATISTIC #
-##########################
-trueStatistic <- rep(NA, n)
-for(time in 1:n) {
-  trueStatistic[time] <- computeTrueStatisticFilter(X_data = X_data, n = time, type =  type_statistic,
-                                                    comp = comp_statistic)
-}
 
 ################
 # RUN SIS/SIRS #
@@ -54,39 +48,63 @@ expRes <- mclapply(1:repetitions, function(rep) {
                                                gParams = gParams)))
 }, mc.cores = ncores)
 
+
 #########################
 # APPROXIMATE STATISTIC #
 #########################
 
-approxStatisticSIS <- matrix(NA, nrow=n, ncol=repetitions)
-approxStatisticSIR <- matrix(NA, nrow=n, ncol=repetitions)
-for(time in 1:n) {
-  approxStatisticSIS[time,] <- sapply(expRes, function(res) {
-    return(computeApproxStatisticFilter(particles = res$SISRes$filteringParticle,
-                                        logWeights = res$SISRes$filteringLogWeights,
-                                        n = time,
-                                        type = type_statistic,
-                                        comp = comp_statistic))
+dfResList <- lapply(c("mean","sum","mean_squared","sum_squared"), function(type_statistic){
+  if(type_statistic == "sum" || type_statistic == "sum_squared") {
+    possible_comp_statistic <- NA
+  } else {
+    possible_comp_statistic <- 1:dimension
+  }
+  dfResComp <- lapply(possible_comp_statistic, function(comp_statistic) {
+    dataStatistics <- rep(NA, n)
+    approxStatisticSIS <- matrix(NA, nrow=n, ncol=repetitions)
+    approxStatisticSIR <- matrix(NA, nrow=n, ncol=repetitions)
+    for(time in 1:n) {
+      dataStatistics[time] <- computeTrueStatisticFilter(X_data = X_data, n = time, type =  type_statistic,
+                                                         comp = comp_statistic)
+      approxStatisticSIS[time,] <- sapply(expRes, function(res) {
+        return(computeApproxStatisticFilter(particles = res$SISRes$filteringParticle,
+                                            logWeights = res$SISRes$filteringLogWeights,
+                                            n = time,
+                                            type = type_statistic,
+                                            comp = comp_statistic))
 
-  })
-  approxStatisticSIR[time,] <- sapply(expRes, function(res) {
-    return(computeApproxStatisticFilter(particles = res$SIRRes$filteringParticle,
-                                        logWeights = res$SIRRes$filteringLogWeights,
-                                        n = time,
-                                        type = type_statistic,
-                                        comp = comp_statistic))
+      })
+      approxStatisticSIR[time,] <- sapply(expRes, function(res) {
+        return(computeApproxStatisticFilter(particles = res$SIRRes$filteringParticle,
+                                            logWeights = res$SIRRes$filteringLogWeights,
+                                            n = time,
+                                            type = type_statistic,
+                                            comp = comp_statistic))
 
+      })
+    }
+    return(list(SIR=approxStatisticSIR,
+                SIS=approxStatisticSIS,
+                dataStatistics=dataStatistics))
   })
-}
+  return(dfResComp)
+})
+names(dfResList) <- c("mean","sum","mean_squared","sum_squared")
 
 ########################
 # COMPUTE BIAS/MSE/VAR #
 ########################
 
-dfRes <- computeDfBiasVar(approxStatisticPF = approxStatisticSIS, trueStatistics = trueStatistic,
-                           algorithmName = "SIS", dependentVarName = "Time")
-dfRes <- computeDfBiasVar(approxStatisticPF = approxStatisticSIR, trueStatistics = trueStatistic,
-                           algorithmName = "SIR", dependentVarName = "Time", dfRes = dfRes)
+dfResVarData <- computeDfVar(approxList = dfResList[[type_statistic_plot]][[comp_statistic_plot]][c("SIR","SIS")],
+                             trueStatistics = dfResList[[type_statistic_plot]][[comp_statistic_plot]]$dataStatistics,
+                             dependentVar = 1:n,
+                             dependentVarName = "Time")
+
+dfResBiasMSEData <- computeDfBiasMSE(approxList = dfResList[[type_statistic_plot]][[comp_statistic_plot]][c("SIR","SIS")],
+                                     trueStatistics = dfResList[[type_statistic_plot]][[comp_statistic_plot]]$dataStatistics,
+                                     dependentVar = 1:n,
+                                     dependentVarName = "Time")
+
 
 ########################
 # MEAN MAXIMUM WEIGHTS #
@@ -104,19 +122,24 @@ for(rep in 1:repetitions) {
 
 dfWeights <- data.frame(Algorithm = character(),
                         Time = numeric(),
+                        Repetition = numeric(),
                         Value = numeric(),
                         stringsAsFactors = FALSE)
-for(time in 1:n) {
-  dfWeights <- rbind(dfWeights,c(Algorithm = "SIS",
-                                 Time = time,
-                                 Value = mean(maxWeightSIS[time,])),
-                     stringsAsFactors = FALSE)
-  dfWeights <- rbind(dfWeights,c(Algorithm = "SIR",
-                                 Time = time,
-                                 Value = mean(maxWeightSIR[time,])),
-                     stringsAsFactors = FALSE)
+for(rep in 1:repetitions) {
+  for(time in 1:n) {
+    dfWeights <- rbind(dfWeights,c(Algorithm = "SIS",
+                                   Time = time,
+                                   Repetition = rep,
+                                   Value = maxWeightSIS[time,rep]),
+                       stringsAsFactors = FALSE)
+    dfWeights <- rbind(dfWeights,c(Algorithm = "SIR",
+                                   Time = time,
+                                   Repetition = rep,
+                                   Value = maxWeightSIR[time,rep]),
+                       stringsAsFactors = FALSE)
+  }
 }
-colnames(dfWeights) <- c("Algorithm","Time","Value")
+colnames(dfWeights) <- c("Algorithm","Time","Repetition", "Value")
 dfWeights$Algorithm <- as.factor(dfWeights$Algorithm)
 
 ########
@@ -125,17 +148,20 @@ dfWeights$Algorithm <- as.factor(dfWeights$Algorithm)
 
 #Variance
 #Just to check the different type of relative variances:
-ggplot(dfRes[dfRes$Type != "Var" & dfRes$Type != "MSE" &
-               dfRes$Type != "Bias" & dfRes$Type != "RMSE" &
-               dfRes$Type != "RelAbsBias",], aes(x = as.numeric(Time), y=as.numeric(Value), group=interaction(Algorithm,Type),
-                    linetype = Algorithm, color = Type)) + geom_line()
+ggplot(dfResVarData[dfResVarData$Type != "Var",], aes(x = as.numeric(Time), y=as.numeric(Value), group=interaction(Algorithm,Type),
+                                                      linetype = Algorithm, color = Type)) + geom_line()
 
 #RelVar
-ggplot(dfRes[dfRes$Type == "RelVar",], aes(x = as.numeric(Time), y=as.numeric(Value), color = Algorithm)) +
-  geom_line(size = 1.2) +  scale_colour_brewer(palette = "Set1")
+ggplot(dfResVarData[dfResVarData$Type == "RelVar",], aes(x = Time, y=Value, color = Algorithm)) +
+  geom_point(size = 1.2) +  scale_colour_brewer(palette = "Set1") +
+  geom_smooth(method="lm",se=FALSE) #Note that this is the relative variance, not the variance!
 
 
 #Maximum Weights
 ggplot(dfWeights, aes(x=as.numeric(Time), y=as.numeric(Value), color=Algorithm)) +
-  geom_line(size = 1.2) + geom_hline(yintercept = 1, linetype="dashed") +
+  geom_hline(yintercept = 1, linetype="dashed") +
+  stat_summary(fun.y = mean,
+               fun.ymin = function(x) mean(x) - sd(x),
+               fun.ymax = function(x) mean(x) + sd(x),
+               geom = "pointrange") +
   scale_colour_brewer(palette = "Set1")
