@@ -58,22 +58,20 @@ arma::uvec neighbour(int component, int radius, int dimension) {
   }
   int counter = 0;
   if(radius >= ceil(dimension/2.0)) {
-    arma::uvec neighbour(dimension-1);
+    arma::uvec neighbour(dimension);
     for(int i = 0; i<dimension; i++) {
-      if(i != component) {
-        neighbour(counter) = i;
-        counter++;
-      }
+      neighbour(i) = i;
     }
     return(neighbour);
   }
 
-  arma::uvec neighbour(2*radius);
+  arma::uvec neighbour(2*radius+1);
   for(int i=1; i<=radius; i++) {
     neighbour(counter) = modulo(component + i,dimension);
     neighbour(counter+1) = modulo(component - i,dimension);
     counter += 2;
   }
+  neighbour(counter) = component;
   return(neighbour);
 
 }

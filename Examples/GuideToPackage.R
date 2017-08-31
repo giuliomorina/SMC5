@@ -334,3 +334,55 @@ print(approxStatisticGibbsPF)
 # The function computeDfBiasVar can also be used to quickly generate a dataset with bias/var/MSE and other
 # information of the estimator obtained through several replications. See CurseOfTime.R or CurseOfDimensionality.R
 # to see how it is used.
+
+#############
+# SMOOTHING #
+#############
+rm(list=ls())
+set.seed(191918)
+dimension <- 3
+A <- diag(3)
+X0 <- rep(0,dimension)
+sigmaX <- diag(rep(1,dimension))
+sigmaY <- diag(rep(1,dimension))
+n <- 10
+dataset <- generateData(n, A, X0, sigmaX, sigmaY)
+fParams <- list(A=A, X0=X0, sigmaX=sigmaX)
+
+#smoothingStatistic compute the true statistic given the data
+trueSmoothingStatistic <- smoothingStatistic(dataset$X_data)
+
+#Kalman particles
+N <- 100
+kalmanFilterRes <- KalmanFilterCpp(m_0 = X0,
+                                   C_0 = sigmaX,
+                                   F_matrix = diag(dimension),
+                                   G = A,
+                                   V = sigmaY,
+                                   W = sigmaX,
+                                   y = dataset$Y_data)
+kalmanParticles <- array(NA,c(n,dimension,N))
+for(aux in 1:n) {
+  kalmanParticles[aux,,] <- t(mvrnormArma(N,mean = kalmanFilterRes$m[,aux+1], sigma = as.matrix(kalmanFilterRes$C[,,aux+1])))
+}
+kalmanLogWeights <- array(log(1/N),c(n,1,N))
+
+#Standard forward smoothing
+#This breaks up as the dimension of the space grows
+forwardSmoothingStatistic <- forwardSmoothing(n=n, filteringParticlesTemp = kalmanParticles,
+                                              filteringLogWeightsTemp = kalmanLogWeights,
+                                              fParams = fParams)
+
+#Blocked forward smoothing
+blocks <- lapply(1:dimension, function(i) {i})
+blockedForwardSmoothingStatistic <- blockForwardSmoothing(n=n, filteringParticlesTemp = kalmanParticles,
+                                                          filteringLogWeightsTemp = kalmanLogWeights,
+                                                          blocks = blocks, fParams = fParams)
+
+#Gibbs forward smoothing
+radius <- 0 #Correspond to the block with cardinality 1
+gibbsForwardSmoothingStatistic <- gibbsForwardSmoothing(n=n, filteringParticlesTemp = kalmanParticles,
+                                                        filteringLogWeightsTemp = kalmanLogWeights,
+                                                        radius = radius, fParams = fParams)
+
+#Online versions of these algorithm are available as well.

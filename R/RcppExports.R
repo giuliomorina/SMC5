@@ -52,6 +52,30 @@ rnormArma <- function(n, mean, sigma) {
     .Call('SMC5_rnormArma', PACKAGE = 'SMC5', n, mean, sigma)
 }
 
+blockForwardSmoothingOnline <- function(n, filteringParticlesTemp, filteringLogWeightsTemp, previous_alpha, blocks, fParams) {
+    .Call('SMC5_blockForwardSmoothingOnline', PACKAGE = 'SMC5', n, filteringParticlesTemp, filteringLogWeightsTemp, previous_alpha, blocks, fParams)
+}
+
+gibbsForwardSmoothingOnline <- function(n, filteringParticlesTemp, filteringLogWeightsTemp, previous_log_alpha, radius, fParams) {
+    .Call('SMC5_gibbsForwardSmoothingOnline', PACKAGE = 'SMC5', n, filteringParticlesTemp, filteringLogWeightsTemp, previous_log_alpha, radius, fParams)
+}
+
+forwardSmoothingOnline <- function(n, filteringParticlesTemp, filteringLogWeightsTemp, previous_log_alpha, fParams) {
+    .Call('SMC5_forwardSmoothingOnline', PACKAGE = 'SMC5', n, filteringParticlesTemp, filteringLogWeightsTemp, previous_log_alpha, fParams)
+}
+
+blockForwardSmoothing <- function(n, filteringParticlesTemp, filteringLogWeightsTemp, blocks, fParams) {
+    .Call('SMC5_blockForwardSmoothing', PACKAGE = 'SMC5', n, filteringParticlesTemp, filteringLogWeightsTemp, blocks, fParams)
+}
+
+gibbsForwardSmoothing <- function(n, filteringParticlesTemp, filteringLogWeightsTemp, radius, fParams) {
+    .Call('SMC5_gibbsForwardSmoothing', PACKAGE = 'SMC5', n, filteringParticlesTemp, filteringLogWeightsTemp, radius, fParams)
+}
+
+forwardSmoothing <- function(n, filteringParticlesTemp, filteringLogWeightsTemp, fParams) {
+    .Call('SMC5_forwardSmoothing', PACKAGE = 'SMC5', n, filteringParticlesTemp, filteringLogWeightsTemp, fParams)
+}
+
 blockParticleFilterOnline <- function(N, n, particles, logWeights, blocks, fParams, gParams, resampling = TRUE, init = FALSE) {
     .Call('SMC5_blockParticleFilterOnline', PACKAGE = 'SMC5', N, n, particles, logWeights, blocks, fParams, gParams, resampling, init)
 }
