@@ -16,14 +16,14 @@ if(Sys.info()["nodename"] == "greyplover.stats.ox.ac.uk" || Sys.info()["nodename
 # SETTING EXPERIMENT #
 ######################
 id <- sample(1e7,size = 1)
-set.seed(872328,"L'Ecuyer-CMRG")
+#set.seed(872328,"L'Ecuyer-CMRG")
 n <- 20
-possible_dimension <- seq(from=20, to=40, by=20)
+possible_dimension <- seq(from=20, to=300, by=40)
 possible_cardinalities <- c(1,4,10)
 possible_radius <- c(1,4)
-ncores <- 1
-repetitions <- 2
-N <- 50 #Number of particles
+ncores <- 20
+repetitions <- 40
+N <- 500 #Number of particles
 A_generator <- c(0.5,0.2)
 varX <- 1 #Variance of sigmaX
 varY <- 1 #Variance of sigmaY
@@ -46,6 +46,7 @@ expRes <- lapply(possible_dimension, function(dimension) {
   res <- mclapply(1:repetitions, function(rep) {
     #GENERATE NEW Y, different for every repetition, always with the same X
     Y_data <- generateY(X_data, sigmaY)
+    gParams <- list(Y=Y_data, sigmaY=sigmaY)
     #GENERATE KALMAN PARTICLES
     kalmanFilterRes <- KalmanFilterCpp(m_0 = X0,
                                        C_0 = sigmaX,
@@ -59,18 +60,18 @@ expRes <- lapply(possible_dimension, function(dimension) {
       kalmanParticles[aux,,] <- t(mvrnormArma(N,mean = kalmanFilterRes$m[,aux+1], sigma = as.matrix(kalmanFilterRes$C[,,aux+1])))
     }
     kalmanLogWeights <- array(log(1/N),c(n,1,N))
-    #STANDARD FORWARD FILTER
+    #STANDARD FORWARD SMOOTHING
     resStandard <- list(forwardSmoothing(n=n,filteringParticlesTemp = kalmanParticles,
                                          filteringLogWeightsTemp = kalmanLogWeights,
                                          fParams = fParams)$statistic)
-    #BLOCKED FORWARD FILTER
+    #BLOCKED FORWARD SMOOTHING
     resBlock <- lapply(possible_cardinalities, function(card) {
       blocks <- split(1:dimension,ceiling((1:dimension)/card))
       return(blockForwardSmoothing(n=n, filteringParticlesTemp = kalmanParticles,
                                    filteringLogWeightsTemp = kalmanLogWeights, blocks=blocks,
                                    fParams = fParams)$statistic)
     })
-    #GIBBS FORWARD FILTER
+    #GIBBS FORWARD SMOOTHING
     resGibbs <- lapply(possible_radius, function(radius) {
       return(gibbsForwardSmoothing(n=n, filteringParticlesTemp = kalmanParticles,
                                    filteringLogWeightsTemp = kalmanLogWeights, radius=radius,
@@ -79,18 +80,43 @@ expRes <- lapply(possible_dimension, function(dimension) {
 
     res_out <- list(resStandard = resStandard,
                     resBlock = resBlock,
-                    resGibbs = resGibbs)
+                    resGibbs = resGibbs,
+                    dataStatistic = smoothingStatistic(X_data),
+                    trueStatistic = smoothingStatisticKalman(fParams=fParams, gParams = gParams))
 
     if(Sys.info()["nodename"] == "greyplover.stats.ox.ac.uk" || Sys.info()["nodename"] == "greypartridge.stats.ox.ac.uk" ||
        Sys.info()["nodename"] == "greyheron.stats.ox.ac.uk" || Sys.info()["nodename"] == "greywagtail.stats.ox.ac.uk") {
-      saveRDS(dfResList, file = paste0("smoothing_curse_dimensionality_dim_",dimension,"_rep_",rep,"_id_",id,".RDS"))
+      saveRDS(res_out, file = paste0("smoothing_curse_dimensionality_dim_",dimension,"_rep_",rep,"_id_",id,".RDS"))
     }
 
     return(res_out)
   }, mc.cores = ncores)
-  return(list(res=res,
-              trueStatistic = smoothingStatistic(X_data)))
+  if(Sys.info()["nodename"] == "greyplover.stats.ox.ac.uk" || Sys.info()["nodename"] == "greypartridge.stats.ox.ac.uk" ||
+     Sys.info()["nodename"] == "greyheron.stats.ox.ac.uk" || Sys.info()["nodename"] == "greywagtail.stats.ox.ac.uk") {
+    saveRDS(res, file = paste0("smoothing_curse_dimensionality_FINAL_dim_",dimension,"_id_",id,".RDS"))
+  }
+  return(list(res=res))
 })
+
+###########################
+# RECOVER PREVIOUS RESULT #
+###########################
+
+if(!exists("expRes")) {
+  id <- 7903543
+  directory_path <- "/Users/Giulio/Dropbox/OxWaSP/2nd Mini Project/Server_result/Smoothing_res/"
+  expRes <- lapply(possible_dimension, function(dimension) {
+    res <- lapply(1:repetitions, function(rep) {
+      res_out <- readRDS(paste0(directory_path,"smoothing_curse_dimensionality_dim_",dimension,"_rep_",rep,"_id_",id,".RDS"))
+      return(res_out)
+    })
+    return(list(res=res,
+                trueStatistic = res[[1]]$trueStatistic))
+  })
+} else {
+  print("expRes already exists.")
+}
+
 
 #########################
 # APPROXIMATE STATISTIC #
@@ -102,7 +128,7 @@ counter_list <- 1
 approxStatistic <- matrix(NA, nrow=length(possible_dimension), ncol=repetitions)
 for(counter in 1:length(possible_dimension)) {
   approxStatistic[counter,] <- sapply(expRes[[counter]]$res, function(res) {
-    return(res$resStandard[[1]])
+    return(res$resStandard[[1]]/possible_dimension[counter])
   })
 }
 dfResList[[counter_list]] <- approxStatistic
@@ -111,7 +137,7 @@ counter_list <- counter_list + 1
 for(i in 1:length(possible_cardinalities)) {
   for(counter in 1:length(possible_dimension)) {
     approxStatistic[counter,] <- sapply(expRes[[counter]]$res, function(res) {
-      return(res$resBlock[[i]])
+      return(res$resBlock[[i]]/possible_dimension[counter])
     })
   }
   dfResList[[counter_list]] <- approxStatistic
@@ -121,22 +147,34 @@ for(i in 1:length(possible_cardinalities)) {
 for(i in 1:length(possible_radius)) {
   for(counter in 1:length(possible_dimension)) {
     approxStatistic[counter,] <- sapply(expRes[[counter]]$res, function(res) {
-      return(res$resGibbs[[i]])
+      return(res$resGibbs[[i]]/possible_dimension[counter])
     })
   }
   dfResList[[counter_list]] <- approxStatistic
   counter_list <- counter_list + 1
 }
-trueStatistic <- rep(NA, length(possible_dimension))
+#True Statistic
 for(counter in 1:length(possible_dimension)) {
-  trueStatistic[counter] <- expRes[[counter]]$trueStatistic
+  approxStatistic[counter,] <- sapply(expRes[[counter]]$res, function(res) {
+    return(res$trueStatistic/possible_dimension[counter])
+  })
 }
-dfResList[[counter_list]] <- trueStatistic
+dfResList[[counter_list]] <- approxStatistic
+counter_list <- counter_list + 1
+#Data statistic
+for(counter in 1:length(possible_dimension)) {
+  approxStatistic[counter,] <- sapply(expRes[[counter]]$res, function(res) {
+    return(res$dataStatistic/possible_dimension[counter])
+  })
+}
+dfResList[[counter_list]] <- approxStatistic
 counter_list <- counter_list + 1
 names(dfResList)[1] <- "Standard"
 names(dfResList)[2:(length(possible_cardinalities)+1)] <- paste0("BlockCard",possible_cardinalities)
-names(dfResList)[(length(possible_cardinalities)+2):(length(dfResList)-1)] <- paste0("GibbsRadius",possible_radius)
+names(dfResList)[(length(possible_cardinalities)+2):(length(dfResList)-2)] <- paste0("GibbsRadius",possible_radius)
+names(dfResList)[length(dfResList)-1] <- "TrueStatistic"
 names(dfResList)[length(dfResList)] <- "DataStatistic"
+
 
 if(Sys.info()["nodename"] == "greyplover.stats.ox.ac.uk" || Sys.info()["nodename"] == "greypartridge.stats.ox.ac.uk" ||
    Sys.info()["nodename"] == "greyheron.stats.ox.ac.uk" || Sys.info()["nodename"] == "greywagtail.stats.ox.ac.uk") {
@@ -147,8 +185,8 @@ if(Sys.info()["nodename"] == "greyplover.stats.ox.ac.uk" || Sys.info()["nodename
 # COMPUTE MSE #
 ###############
 
-dfResMSE <- computeDfBiasMSE(approxList = dfResList[1:(length(dfResList)-1)],
-                             trueStatistics =  dfResList[[length(dfResList)]],
+dfResMSE <- computeDfBiasMSE(approxList = dfResList[1:(length(dfResList)-2)],
+                             trueStatistics =  dfResList[["DataStatistic"]],
                              dependentVar = possible_dimension,
                              dependentVarName = "Dimension")
 
