@@ -52,6 +52,10 @@ rnormArma <- function(n, mean, sigma) {
     .Call('SMC5_rnormArma', PACKAGE = 'SMC5', n, mean, sigma)
 }
 
+blockForwardSmoothingSMC4 <- function(filteringResults, filteringLogWeights, blocks, fParams) {
+    .Call('SMC5_blockForwardSmoothingSMC4', PACKAGE = 'SMC5', filteringResults, filteringLogWeights, blocks, fParams)
+}
+
 blockForwardSmoothingOnline <- function(n, filteringParticlesTemp, filteringLogWeightsTemp, previous_alpha, blocks, fParams) {
     .Call('SMC5_blockForwardSmoothingOnline', PACKAGE = 'SMC5', n, filteringParticlesTemp, filteringLogWeightsTemp, previous_alpha, blocks, fParams)
 }

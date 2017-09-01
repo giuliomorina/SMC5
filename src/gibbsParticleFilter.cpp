@@ -13,6 +13,7 @@ double fDensityComponent(arma::cube& results_array,
   //X_{t+1} = AX_t + W_t, with W_t ~ N(mean,sigma)
   //Meaning that X_{t+1^^component ~ N((AX_t+mean)^component,sigma^component)
   arma::rowvec newMean = results_array.slice(particleIndCurrent).row(time-1)*A.t();
+
   return(dnrmArma(results_array(time,component,particleIndNew), newMean(component), sqrt(sigma(component,component)), true));
 }
 

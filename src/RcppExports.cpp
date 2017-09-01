@@ -109,6 +109,20 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// blockForwardSmoothingSMC4
+arma::cube blockForwardSmoothingSMC4(arma::cube filteringResults, arma::cube filteringLogWeights, List blocks, List fParams);
+RcppExport SEXP SMC5_blockForwardSmoothingSMC4(SEXP filteringResultsSEXP, SEXP filteringLogWeightsSEXP, SEXP blocksSEXP, SEXP fParamsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::cube >::type filteringResults(filteringResultsSEXP);
+    Rcpp::traits::input_parameter< arma::cube >::type filteringLogWeights(filteringLogWeightsSEXP);
+    Rcpp::traits::input_parameter< List >::type blocks(blocksSEXP);
+    Rcpp::traits::input_parameter< List >::type fParams(fParamsSEXP);
+    rcpp_result_gen = Rcpp::wrap(blockForwardSmoothingSMC4(filteringResults, filteringLogWeights, blocks, fParams));
+    return rcpp_result_gen;
+END_RCPP
+}
 // blockForwardSmoothingOnline
 List blockForwardSmoothingOnline(int n, arma::cube filteringParticlesTemp, arma::cube filteringLogWeightsTemp, arma::cube previous_alpha, List blocks, List fParams);
 RcppExport SEXP SMC5_blockForwardSmoothingOnline(SEXP nSEXP, SEXP filteringParticlesTempSEXP, SEXP filteringLogWeightsTempSEXP, SEXP previous_alphaSEXP, SEXP blocksSEXP, SEXP fParamsSEXP) {
@@ -425,6 +439,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"SMC5_dnrmArma", (DL_FUNC) &SMC5_dnrmArma, 4},
     {"SMC5_mvrnormArma", (DL_FUNC) &SMC5_mvrnormArma, 4},
     {"SMC5_rnormArma", (DL_FUNC) &SMC5_rnormArma, 3},
+    {"SMC5_blockForwardSmoothingSMC4", (DL_FUNC) &SMC5_blockForwardSmoothingSMC4, 4},
     {"SMC5_blockForwardSmoothingOnline", (DL_FUNC) &SMC5_blockForwardSmoothingOnline, 6},
     {"SMC5_gibbsForwardSmoothingOnline", (DL_FUNC) &SMC5_gibbsForwardSmoothingOnline, 6},
     {"SMC5_forwardSmoothingOnline", (DL_FUNC) &SMC5_forwardSmoothingOnline, 5},

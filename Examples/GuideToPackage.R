@@ -379,10 +379,26 @@ blockedForwardSmoothingStatistic <- blockForwardSmoothing(n=n, filteringParticle
                                                           filteringLogWeightsTemp = kalmanLogWeights,
                                                           blocks = blocks, fParams = fParams)
 
+sum(exp(kalmanLogWeights[n,,])*blockedForwardSmoothingStatistic$alpha[n,,])
+blockedForwardSmoothingStatistic$statistic
 #Gibbs forward smoothing
 radius <- 0 #Correspond to the block with cardinality 1
 gibbsForwardSmoothingStatistic <- gibbsForwardSmoothing(n=n, filteringParticlesTemp = kalmanParticles,
                                                         filteringLogWeightsTemp = kalmanLogWeights,
                                                         radius = radius, fParams = fParams)
 
-#Online versions of these algorithm are available as well.
+# Online versions of these algorithm are available as well.
+# An old version is also available which still works
+kalmanWeightsLog <- array(log(1/N),c(n,length(blocks),N))
+alphaForwardSmoothingSMC4 <- blockForwardSmoothingSMC4(filteringResults = kalmanParticles,
+                                                                  filteringLogWeights = kalmanWeightsLog,
+                                                                  blocks = blocks, fParams = fParams)
+sum(exp(kalmanWeightsLog[n,,])*alphaForwardSmoothingSMC4[n,,])
+
+benchmark(blockForwardSmoothingSMC4(filteringResults = kalmanParticles,
+                                    filteringLogWeights = kalmanWeightsLog,
+                                    blocks = blocks, fParams = fParams),
+          blockForwardSmoothing(n=n, filteringParticlesTemp = kalmanParticles,
+                                filteringLogWeightsTemp = kalmanLogWeights,
+                                blocks = blocks, fParams = fParams)) #1.7x times faster
+

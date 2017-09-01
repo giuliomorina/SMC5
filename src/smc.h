@@ -19,4 +19,6 @@ double fgSampleComponent(arma::rowvec& , arma::rowvec , int& , arma::mat& , arma
 double fgScaleFactorComponent(arma::rowvec& , arma::rowvec , int& , arma::mat& , arma::mat& , arma::mat& );
 arma::uvec neighbourSMC4(int, int, int);
 arma::uvec neighbour(int, int, int);
+double fDensityBlock(arma::rowvec, arma::rowvec, arma::uvec, arma::mat&, arma::mat&);
+arma::colvec fFunctional(arma::cube&, arma::uvec&, int& ,int&);
 #endif

@@ -14,9 +14,9 @@ double fFunctional(arma::cube& filteringParticles, int time, int component,
 
 // [[Rcpp::export]]
 List blockForwardSmoothingOnline(int n, arma::cube filteringParticlesTemp,
-                                   arma::cube filteringLogWeightsTemp,
-                                   arma::cube previous_alpha,
-                                   List blocks, List fParams) {
+                                 arma::cube filteringLogWeightsTemp,
+                                 arma::cube previous_alpha,
+                                 List blocks, List fParams) {
   //Unroll fParams
   arma::mat A = fParams["A"];
   arma::rowvec X0 = fParams["X0"];
@@ -57,9 +57,9 @@ List blockForwardSmoothingOnline(int n, arma::cube filteringParticlesTemp,
   for(int b=0; b < number_blocks; b++) {
 
     arma::uvec coord = coord_array[b]; //Coordinates of this block
-    for(int t=previous_alpha.n_rows; t < n+1; t++) {
-      temp_log_weights = filteringLogWeights(span(t-1),span(0),span());
+    for(int t=previous_alpha.n_rows; t < n+1; t++) { //+1 cause the first one is all zeros
       for(int i=0; i<N; i++) {
+        temp_log_weights = filteringLogWeights(span(t-1),span(0),span());
         //Compute weights
         for(int j=0; j<N; j++) {
           for(int v=0; v < coord.size(); v++) {
@@ -68,6 +68,7 @@ List blockForwardSmoothingOnline(int n, arma::cube filteringParticlesTemp,
         }
         //Standardize
         standardizeLogVector(temp_log_weights);
+
         //Compute alpha in each component of the block
         for(int v=0; v < coord.size(); v++) {
           temp_alpha = exp(temp_log_weights);
@@ -89,16 +90,17 @@ List blockForwardSmoothingOnline(int n, arma::cube filteringParticlesTemp,
     }
   }
 
+  arma::cube alpha_res = alpha.subcube(1,0,0,n,dimension-1,N-1); //Remove the first so that it is consistent with filter results
   return(List::create(Named("statistic") = res,
-                      Named("alpha") = alpha));
+                      Named("alpha") = alpha_res));
 }
 
 // [[Rcpp::export]]
 List gibbsForwardSmoothingOnline(int n, arma::cube filteringParticlesTemp,
-                                   arma::cube filteringLogWeightsTemp,
-                                   arma::cube previous_log_alpha,
-                                   int radius,
-                                   List fParams) {
+                                 arma::cube filteringLogWeightsTemp,
+                                 arma::cube previous_log_alpha,
+                                 int radius,
+                                 List fParams) {
   //The blocks are the neighbour!
   int dimension = filteringParticlesTemp.n_cols;
   Rcpp::List blocks(dimension);
@@ -114,9 +116,9 @@ List gibbsForwardSmoothingOnline(int n, arma::cube filteringParticlesTemp,
 
 // [[Rcpp::export]]
 List forwardSmoothingOnline(int n, arma::cube filteringParticlesTemp,
-                              arma::cube filteringLogWeightsTemp,
-                              arma::cube previous_log_alpha,
-                              List fParams) {
+                            arma::cube filteringLogWeightsTemp,
+                            arma::cube previous_log_alpha,
+                            List fParams) {
   int dimension = filteringParticlesTemp.n_cols;
   List blocks = List::create(linspace(1,dimension,dimension).t());
   return(blockForwardSmoothingOnline(n, filteringParticlesTemp,
@@ -127,8 +129,8 @@ List forwardSmoothingOnline(int n, arma::cube filteringParticlesTemp,
 }
 // [[Rcpp::export]]
 List blockForwardSmoothing(int n, arma::cube filteringParticlesTemp,
-                             arma::cube filteringLogWeightsTemp,
-                             List blocks, List fParams) {
+                           arma::cube filteringLogWeightsTemp,
+                           List blocks, List fParams) {
   arma::cube previous_log_alpha(1, filteringParticlesTemp.n_cols, filteringParticlesTemp.n_slices, fill::zeros);
   return(blockForwardSmoothingOnline(n, filteringParticlesTemp,
                                      filteringLogWeightsTemp,
@@ -138,9 +140,9 @@ List blockForwardSmoothing(int n, arma::cube filteringParticlesTemp,
 
 // [[Rcpp::export]]
 List gibbsForwardSmoothing(int n, arma::cube filteringParticlesTemp,
-                             arma::cube filteringLogWeightsTemp,
-                             int radius,
-                             List fParams) {
+                           arma::cube filteringLogWeightsTemp,
+                           int radius,
+                           List fParams) {
   arma::cube previous_log_alpha(1, filteringParticlesTemp.n_cols, filteringParticlesTemp.n_slices, fill::zeros);
   return(gibbsForwardSmoothingOnline(n, filteringParticlesTemp,
                                      filteringLogWeightsTemp,
@@ -151,8 +153,8 @@ List gibbsForwardSmoothing(int n, arma::cube filteringParticlesTemp,
 
 // [[Rcpp::export]]
 List forwardSmoothing(int n, arma::cube filteringParticlesTemp,
-                        arma::cube filteringLogWeightsTemp,
-                        List fParams) {
+                      arma::cube filteringLogWeightsTemp,
+                      List fParams) {
   int dimension = filteringParticlesTemp.n_cols;
   List blocks = List::create(linspace(1,dimension,dimension).t());
   return(blockForwardSmoothing(n, filteringParticlesTemp,

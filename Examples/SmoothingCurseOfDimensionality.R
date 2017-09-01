@@ -7,6 +7,11 @@ require(SMC5)
 require(parallel)
 require(ggplot2)
 
+if(Sys.info()["nodename"] == "greyplover.stats.ox.ac.uk" || Sys.info()["nodename"] == "greypartridge.stats.ox.ac.uk" ||
+   Sys.info()["nodename"] == "greyheron.stats.ox.ac.uk" || Sys.info()["nodename"] == "greywagtail.stats.ox.ac.uk") {
+  setwd("/homes/morina/Local_Project/Smoothing_res")
+}
+
 ######################
 # SETTING EXPERIMENT #
 ######################
@@ -71,9 +76,17 @@ expRes <- lapply(possible_dimension, function(dimension) {
                                    filteringLogWeightsTemp = kalmanLogWeights, radius=radius,
                                    fParams = fParams)$statistic)
     })
-    return(list(resStandard = resStandard,
-                resBlock = resBlock,
-                resGibbs = resGibbs))
+
+    res_out <- list(resStandard = resStandard,
+                    resBlock = resBlock,
+                    resGibbs = resGibbs)
+
+    if(Sys.info()["nodename"] == "greyplover.stats.ox.ac.uk" || Sys.info()["nodename"] == "greypartridge.stats.ox.ac.uk" ||
+       Sys.info()["nodename"] == "greyheron.stats.ox.ac.uk" || Sys.info()["nodename"] == "greywagtail.stats.ox.ac.uk") {
+      saveRDS(dfResList, file = paste0("smoothing_curse_dimensionality_dim_",dimension,"_rep_",rep,"_id_",id,".RDS"))
+    }
+
+    return(res_out)
   }, mc.cores = ncores)
   return(list(res=res,
               trueStatistic = smoothingStatistic(X_data)))
