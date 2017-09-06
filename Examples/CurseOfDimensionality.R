@@ -14,8 +14,8 @@ require(ggplot2)
 ######################
 set.seed(88,"L'Ecuyer-CMRG")
 n <- 1 #Filter time
-possible_dimension <- 1:50 #Possible dimensions. Need to be contiguous and start from 1!
-ncores <- 1
+possible_dimension <- seq(from=1, to=1000, by=20) #Possible dimensions. Need to be contiguous and start from 1!
+ncores <- 15
 repetitions <- 1000
 N <- 20 #Number of particles
 A_diag <- 1 #Elements on the diagonal of A
@@ -25,6 +25,7 @@ X0_point <- 10 #Initial point, just away from 0 to avoid problem when estimate r
 card_block <- 1 #Cardinality of the block
 radius <- 0 #Radius of Gibbs PF
 m <- 10 #Number of sweeps
+id <- sample(1e7,size = 1)
 
 type_statistic_plot <- "sum_squared" #Which statistic to plot
 comp_statistic_plot <- 2 #Which component of the statistic (must be 1 for sum and sum squared)
@@ -166,7 +167,7 @@ dfResList <- lapply(c("mean","sum","mean_squared","sum_squared"), function(type_
     return(list(SIS=approxStatisticSIS,
                 SIR=approxStatisticSIR,
                 Block=approxStatisticBlock,
-                GibbsPF=approxStatisticGibbsPF,
+                GibbsPF=approxStatisticGlobalGibbsPF,
                 LocGibbsPF=approxStatisticGibbsPF,
                 Kalman=approxStatisticKalman,
                 dataStatistics=dataStatistics,
@@ -179,7 +180,7 @@ names(dfResList) <- c("mean","sum","mean_squared","sum_squared")
 
 if(Sys.info()["nodename"] == "greyplover.stats.ox.ac.uk" || Sys.info()["nodename"] == "greypartridge.stats.ox.ac.uk" ||
    Sys.info()["nodename"] == "greyheron.stats.ox.ac.uk" || Sys.info()["nodename"] == "greywagtail.stats.ox.ac.uk") {
-  saveRDS(dfResList, file = paste0("curse_of_dimensionality_res_",sample(1e7,size = 1),".RDS"))
+  saveRDS(dfResList, file = paste0("curse_of_dimensionality_res_",id,".RDS"))
 }
 
 ########################
@@ -194,16 +195,16 @@ dfResBiasVar <- lapply(c("mean","sum","mean_squared","sum_squared"), function(ty
   }
   dfResBiasVarComp <- lapply(possible_comp_statistic, function(comp_statistic) {
 
-    dfResVar <- computeDfVar(approxList = dfResList[[type_statistic]][[comp_statistic]][c("SIR","Block","GibbsPF","Kalman")],
+    dfResVar <- computeDfVar(approxList = dfResList[[type_statistic]][[comp_statistic]][c("SIR","Block","GibbsPF","Kalman","SIS","LocGibbsPF")],
                              trueStatistics = dfResList[[type_statistic]][[comp_statistic]]$dataStatistics,
                              dependentVar = possible_dimension,
                              dependentVarName = "Dimension")
 
-    dfResBiasMSEData <- computeDfBiasMSE(approxList = dfResList[[type_statistic]][[comp_statistic]][c("SIR","Block","GibbsPF","Kalman")],
+    dfResBiasMSEData <- computeDfBiasMSE(approxList = dfResList[[type_statistic]][[comp_statistic]][c("SIR","Block","GibbsPF","Kalman","SIS","LocGibbsPF")],
                                          trueStatistics = dfResList[[type_statistic]][[comp_statistic]]$dataStatistics,
                                          dependentVar = possible_dimension,
                                          dependentVarName = "Dimension")
-    dfResBiasMSETrue <- computeDfBiasMSE(approxList = dfResList[[type_statistic]][[comp_statistic]][c("SIR","Block","GibbsPF","Kalman")],
+    dfResBiasMSETrue <- computeDfBiasMSE(approxList = dfResList[[type_statistic]][[comp_statistic]][c("SIR","Block","GibbsPF","Kalman","SIS","LocGibbsPF")],
                                          trueStatistics = dfResList[[type_statistic]][[comp_statistic]]$trueStatistics,
                                          dependentVar = possible_dimension,
                                          dependentVarName = "Dimension")
@@ -218,7 +219,7 @@ names(dfResBiasVar) <- c("mean","sum","mean_squared","sum_squared")
 
 if(Sys.info()["nodename"] == "greyplover.stats.ox.ac.uk" || Sys.info()["nodename"] == "greypartridge.stats.ox.ac.uk" ||
    Sys.info()["nodename"] == "greyheron.stats.ox.ac.uk" || Sys.info()["nodename"] == "greywagtail.stats.ox.ac.uk") {
-  saveRDS(dfResBiasVar, file = paste0("curse_of_dimensionality_res_biasvar_",sample(1e7,size = 1),".RDS"))
+  saveRDS(dfResBiasVar, file = paste0("curse_of_dimensionality_res_biasvar_",id,".RDS"))
 }
 
 
@@ -253,6 +254,11 @@ for(rep in 1:repetitions) {
 colnames(dfWeights) <- c("Algorithm","Dimension","Repetition", "Value")
 dfWeights$Algorithm <- as.factor(dfWeights$Algorithm)
 
+if(Sys.info()["nodename"] == "greyplover.stats.ox.ac.uk" || Sys.info()["nodename"] == "greypartridge.stats.ox.ac.uk" ||
+   Sys.info()["nodename"] == "greyheron.stats.ox.ac.uk" || Sys.info()["nodename"] == "greywagtail.stats.ox.ac.uk") {
+  saveRDS(dfWeights, file = paste0("curse_of_dimensionality_weight_",id,".RDS"))
+  save.image(file="curse_of_dim_ALL.RData")
+}
 
 ########
 # PLOT #
@@ -260,6 +266,7 @@ dfWeights$Algorithm <- as.factor(dfWeights$Algorithm)
 
 dfBiasMSEToPlot <- dfResBiasVar[[type_statistic_plot]][[comp_statistic_plot]]$dfResBiasMSEData
 dfResVarToPlot <-  dfResBiasVar[[type_statistic_plot]][[comp_statistic_plot]]$dfResVar
+dfResVarToPlot$Algorithm <- factor(dfResVarToPlot$Algorithm, c("SIS","SIR","GibbsPF","Block","LocGibbsPF","Kalman"))
 
 #Variance
 #Just to check the different type of relative variances:
@@ -270,7 +277,7 @@ dfResVarToPlot <-  dfResBiasVar[[type_statistic_plot]][[comp_statistic_plot]]$df
 #   geom_line(size = 1.2) +  scale_colour_brewer(palette = "Set1")
 
 ggplot(dfResVarToPlot[dfResVarToPlot$Type == "RelVar",], aes(x = Dimension, y=Value, color = Algorithm)) +
-  geom_point(size = 3, shape = 4) +  scale_colour_brewer(palette = "Set1") +
+  geom_point(size = 3, shape = 4) +  scale_colour_brewer(palette = "Dark2") +
   theme_grey(base_size = 12) +
   theme(plot.title = element_text(hjust = 0.5)) + ylab("Relative Variance") +
   geom_smooth(method="lm",se=FALSE, size = 1.5)

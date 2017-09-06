@@ -154,7 +154,7 @@ ggplot(dfResVarData[dfResVarData$Type != "Var",], aes(x = as.numeric(Time), y=as
 
 #RelVar
 ggplot(dfResVarData[dfResVarData$Type == "RelVar",], aes(x = Time, y=Value, color = Algorithm)) +
-  geom_point(size = 3, shape = 4) +  scale_colour_brewer(palette = "Set1") +
+  geom_point(size = 3, shape = 4) +  scale_colour_brewer(palette = "Dark2") +
   theme_grey(base_size = 12) +
   theme(plot.title = element_text(hjust = 0.5)) +
   ylab("Relative Variance") + xlab("n") +
