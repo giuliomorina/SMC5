@@ -22,8 +22,8 @@ possible_dimension <- seq(from=20, to=300, by=40)
 possible_cardinalities <- c(1,4,10)
 possible_radius <- c(1,4)
 ncores <- 20
-repetitions <- 40
-N <- 500 #Number of particles
+repetitions <- 100
+N <- 50 #Number of particles
 A_generator <- c(0.5,0.2)
 varX <- 1 #Variance of sigmaX
 varY <- 1 #Variance of sigmaY
@@ -103,7 +103,7 @@ expRes <- lapply(possible_dimension, function(dimension) {
 ###########################
 
 if(!exists("expRes")) {
-  id <- 7903543
+  id <- 8965090
   directory_path <- "/Users/Giulio/Dropbox/OxWaSP/2nd Mini Project/Server_result/Smoothing_res/"
   expRes <- lapply(possible_dimension, function(dimension) {
     res <- lapply(1:repetitions, function(rep) {
@@ -186,7 +186,7 @@ if(Sys.info()["nodename"] == "greyplover.stats.ox.ac.uk" || Sys.info()["nodename
 ###############
 
 dfResMSE <- computeDfBiasMSE(approxList = dfResList[1:(length(dfResList)-2)],
-                             trueStatistics =  dfResList[["DataStatistic"]],
+                             trueStatistics =  dfResList[["TrueStatistic"]],
                              dependentVar = possible_dimension,
                              dependentVarName = "Dimension")
 

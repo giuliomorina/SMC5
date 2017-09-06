@@ -7,12 +7,13 @@ rm(list=ls())
 require(SMC5)
 require(parallel)
 require(ggplot2)
+require(latex2exp)
 
 ######################
 # SETTING EXPERIMENT #
 ######################
 
-set.seed(1717)
+set.seed(1717,"L'Ecuyer-CMRG")
 n <- 50
 ncores <- 2
 repetitions <- 100
@@ -153,15 +154,18 @@ ggplot(dfResVarData[dfResVarData$Type != "Var",], aes(x = as.numeric(Time), y=as
 
 #RelVar
 ggplot(dfResVarData[dfResVarData$Type == "RelVar",], aes(x = Time, y=Value, color = Algorithm)) +
-  geom_point(size = 1.2) +  scale_colour_brewer(palette = "Set1") +
-  geom_smooth(method="lm",se=FALSE) #Note that this is the relative variance, not the variance!
+  geom_point(size = 3, shape = 4) +  scale_colour_brewer(palette = "Set1") +
+  theme_grey(base_size = 12) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  ylab("Relative Variance") + xlab("n") +
+  geom_smooth(method="lm",se=FALSE, size = 1.5) #Note that this is the relative variance, not the variance!
 
 
 #Maximum Weights
 ggplot(dfWeights, aes(x=as.numeric(Time), y=as.numeric(Value), color=Algorithm)) +
   geom_hline(yintercept = 1, linetype="dashed") +
-  stat_summary(fun.y = mean,
-               fun.ymin = function(x) mean(x) - sd(x),
-               fun.ymax = function(x) mean(x) + sd(x),
-               geom = "pointrange") +
+  theme_grey(base_size = 12) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  ylab("Weight") + xlab("n") +
+  stat_summary(geom="pointrange", fun.data=mean_cl_boot, fun.args=list(conf.int=1))+
   scale_colour_brewer(palette = "Set1")

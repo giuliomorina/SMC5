@@ -55,7 +55,6 @@ List blockForwardSmoothingOnline(int n, arma::cube filteringParticlesTemp,
   arma::colvec temp_alpha(N);
 
   for(int b=0; b < number_blocks; b++) {
-
     arma::uvec coord = coord_array[b]; //Coordinates of this block
     for(int t=previous_alpha.n_rows; t < n+1; t++) { //+1 cause the first one is all zeros
       for(int i=0; i<N; i++) {

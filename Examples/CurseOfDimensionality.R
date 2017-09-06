@@ -16,7 +16,7 @@ set.seed(88,"L'Ecuyer-CMRG")
 n <- 1 #Filter time
 possible_dimension <- 1:50 #Possible dimensions. Need to be contiguous and start from 1!
 ncores <- 1
-repetitions <- 10
+repetitions <- 1000
 N <- 20 #Number of particles
 A_diag <- 1 #Elements on the diagonal of A
 varX <- 1 #Variance of sigmaX
@@ -63,12 +63,16 @@ expRes <- lapply(possible_dimension, function(dimension) {
     for(aux in 1:n) {
       kalmanParticles[aux,,] <- t(mvrnormArma(N,mean = kalmanFilterRes$m[,aux+1], sigma = as.matrix(kalmanFilterRes$C[,,aux+1])))
     }
-    return(list(SIRRes = bootstrapParticleFilter(N=N, n=n, fParams = fParams,
+    return(list(SISRes = sequentialImportanceSampling(N=N, n=n, fParams = fParams,
+                                                      gParams = gParams),
+                SIRRes = bootstrapParticleFilter(N=N, n=n, fParams = fParams,
                                                  gParams = gParams),
                 BlockRes = blockParticleFilter(N=N, n=n, blocks = blocks,
                                                fParams = fParams, gParams = gParams),
                 GibbsRes = gibbsParticleFilter(N=N, n=n, m=m, radius=radius,
                                                fParams = fParams, gParams=gParams),
+                GlobalGibbsRes = gibbsParticleFilter(N=N, n=n, m=m, radius=dimension,
+                                                     fParams = fParams, gParams=gParams),
                 KalmanRes = list(filteringParticle = kalmanParticles,
                                  filteringLogWeights = array(log(1/N),c(n,1,N))),
                 gParams = gParams,
@@ -93,15 +97,24 @@ dfResList <- lapply(c("mean","sum","mean_squared","sum_squared"), function(type_
     possible_comp_statistic <- 1:min(possible_dimension)
   }
   dfResComp <- lapply(possible_comp_statistic, function(comp_statistic) {
+    approxStatisticSIS <- matrix(NA, nrow=length(possible_dimension), ncol=repetitions)
     approxStatisticSIR <- matrix(NA, nrow=length(possible_dimension), ncol=repetitions)
     approxStatisticBlock <- matrix(NA, nrow=length(possible_dimension), ncol=repetitions)
     approxStatisticGibbsPF <- matrix(NA, nrow=length(possible_dimension), ncol=repetitions)
+    approxStatisticGlobalGibbsPF <- matrix(NA, nrow=length(possible_dimension), ncol=repetitions)
     approxStatisticKalman <- matrix(NA, nrow=length(possible_dimension), ncol=repetitions) #Baseline
     dataStatistics <- rep(NA, length(possible_dimension))
     trueStatistics <- matrix(NA, nrow=length(possible_dimension), ncol=repetitions) #Using Kalman E[theta|Y]
 
     counter <- 1
     for(dimension in possible_dimension) {
+      approxStatisticSIS[counter,] <- sapply(expRes[[counter]]$res, function(res) {
+        return(computeApproxStatisticFilter(particles = res$SISRes$filteringParticle,
+                                            logWeights = res$SISRes$filteringLogWeights,
+                                            n = n,
+                                            type = type_statistic,
+                                            comp = comp_statistic))
+      })
       approxStatisticSIR[counter,] <- sapply(expRes[[counter]]$res, function(res) {
         return(computeApproxStatisticFilter(particles = res$SIRRes$filteringParticle,
                                             logWeights = res$SIRRes$filteringLogWeights,
@@ -120,6 +133,13 @@ dfResList <- lapply(c("mean","sum","mean_squared","sum_squared"), function(type_
       approxStatisticGibbsPF[counter,] <- sapply(expRes[[counter]]$res, function(res) {
         return(computeApproxStatisticFilter(particles = res$GibbsRes$filteringParticle,
                                             logWeights = res$GibbsRes$filteringLogWeights,
+                                            n = n,
+                                            type = type_statistic,
+                                            comp = comp_statistic))
+      })
+      approxStatisticGlobalGibbsPF[counter,] <- sapply(expRes[[counter]]$res, function(res) {
+        return(computeApproxStatisticFilter(particles = res$GlobalGibbsRes$filteringParticle,
+                                            logWeights = res$GlobalGibbsRes$filteringLogWeights,
                                             n = n,
                                             type = type_statistic,
                                             comp = comp_statistic))
@@ -143,9 +163,11 @@ dfResList <- lapply(c("mean","sum","mean_squared","sum_squared"), function(type_
       counter <- counter+1
     }
 
-    return(list(SIR=approxStatisticSIR,
+    return(list(SIS=approxStatisticSIS,
+                SIR=approxStatisticSIR,
                 Block=approxStatisticBlock,
                 GibbsPF=approxStatisticGibbsPF,
+                LocGibbsPF=approxStatisticGibbsPF,
                 Kalman=approxStatisticKalman,
                 dataStatistics=dataStatistics,
                 trueStatistics=trueStatistics))
@@ -248,7 +270,9 @@ dfResVarToPlot <-  dfResBiasVar[[type_statistic_plot]][[comp_statistic_plot]]$df
 #   geom_line(size = 1.2) +  scale_colour_brewer(palette = "Set1")
 
 ggplot(dfResVarToPlot[dfResVarToPlot$Type == "RelVar",], aes(x = Dimension, y=Value, color = Algorithm)) +
-  geom_point(size = 3) +  scale_colour_brewer(palette = "Set1") +
+  geom_point(size = 3, shape = 4) +  scale_colour_brewer(palette = "Set1") +
+  theme_grey(base_size = 12) +
+  theme(plot.title = element_text(hjust = 0.5)) + ylab("Relative Variance") +
   geom_smooth(method="lm",se=FALSE, size = 1.5)
 
 #Bias
