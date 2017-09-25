@@ -15,8 +15,8 @@ require(latex2exp)
 
 set.seed(1717,"L'Ecuyer-CMRG")
 n <- 50
-ncores <- 2
-repetitions <- 100
+ncores <- 4
+repetitions <- 1000
 N <- 20
 type_statistic_plot <- "sum_squared" #Which statistic to plot
 comp_statistic_plot <- 2 #Which component of the statistic (must be 1 for sum and sum squared)
@@ -158,6 +158,7 @@ ggplot(dfResVarData[dfResVarData$Type == "RelVar",], aes(x = Time, y=Value, colo
   theme_grey(base_size = 12) +
   theme(plot.title = element_text(hjust = 0.5)) +
   ylab("Relative Variance") + xlab("n") +
+  theme_bw() +
   geom_smooth(method="lm",se=FALSE, size = 1.5) #Note that this is the relative variance, not the variance!
 
 
@@ -167,5 +168,6 @@ ggplot(dfWeights, aes(x=as.numeric(Time), y=as.numeric(Value), color=Algorithm))
   theme_grey(base_size = 12) +
   theme(plot.title = element_text(hjust = 0.5)) +
   ylab("Weight") + xlab("n") +
+  theme_bw() +
   stat_summary(geom="pointrange", fun.data=mean_cl_boot, fun.args=list(conf.int=1))+
-  scale_colour_brewer(palette = "Set1")
+  scale_colour_brewer(palette = "Dark2")

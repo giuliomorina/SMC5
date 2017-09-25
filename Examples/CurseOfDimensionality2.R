@@ -1,8 +1,4 @@
-# CURSE OF DIMENSIONALITY
-# The curse of dimensionality appears as the dimension of the space grows as, again, all the weight
-# is put on few particles leading to a big variance of the estimator. This happens also at time step n=1.
-# This happen also when the matrix A is diagonal, i.e. there is no actual correlation between the components
-# Blocked PF and Gibbs PF do not suffer from this.
+# CURSE OF DIMENSIONALITY 2
 
 rm(list=ls())
 require(SMC5)
@@ -14,10 +10,10 @@ require(ggplot2)
 ######################
 id <- sample(1e7,size = 1)
 set.seed(88,"L'Ecuyer-CMRG")
-n <- 1 #Filter time
+n <- 10 #Filter time - Still done in 1 time step
 possible_dimension <- seq(from=1, to=50, by=1) #Possible dimensions. Need to be contiguous and start from 1!
-ncores <- 20
-repetitions <- 1000
+ncores <- 4
+repetitions <- 10
 N <- 20 #Number of particles
 A_diag <- 1 #Elements on the diagonal of A
 varX <- 1 #Variance of sigmaX
@@ -64,15 +60,23 @@ expRes <- lapply(possible_dimension, function(dimension) {
     for(aux in 1:n) {
       kalmanParticles[aux,,] <- t(mvrnormArma(N,mean = kalmanFilterRes$m[,aux+1], sigma = as.matrix(kalmanFilterRes$C[,,aux+1])))
     }
-    return(list(SISRes = sequentialImportanceSampling(N=N, n=n, fParams = fParams,
-                                                      gParams = gParams),
-                SIRRes = bootstrapParticleFilter(N=N, n=n, fParams = fParams,
+    return(list(SISRes = sequentialImportanceSamplingOnline(N=N, n=n, fParams = fParams,
+                                                            particles = array(kalmanParticles[1:(n-1),,], c(n-1,dimension,N)),
+                                                            logWeights = array(log(1/N),c(n-1,1,N)),
+                                                            gParams = gParams),
+                SIRRes = bootstrapParticleFilterOnline(N=N, n=n, fParams = fParams,
+                                                 particles = array(kalmanParticles[1:(n-1),,], c(n-1,dimension,N)),
+                                                 logWeights = array(log(1/N),c(n-1,1,N)),
                                                  gParams = gParams),
-                BlockRes = blockParticleFilter(N=N, n=n, blocks = blocks,
+                BlockRes = blockParticleFilterOnline(N=N, n=n, blocks = blocks,
+                                               particles = array(kalmanParticles[1:(n-1),,], c(n-1,dimension,N)),
+                                               logWeights = array(log(1/N),c(n-1,length(blocks),N)),
                                                fParams = fParams, gParams = gParams),
-                GibbsRes = gibbsParticleFilter(N=N, n=n, m=m, radius=radius,
+                GibbsRes = gibbsParticleFilterOnline(N=N, n=n, m=m, radius=radius,
+                                               particles = array(kalmanParticles[1:(n-1),,], c(n-1,dimension,N)),
                                                fParams = fParams, gParams=gParams),
-                GlobalGibbsRes = gibbsParticleFilter(N=N, n=n, m=m, radius=dimension,
+                GlobalGibbsRes = gibbsParticleFilterOnline(N=N, n=n, m=m, radius=dimension,
+                                                     particles = array(kalmanParticles[1:(n-1),,], c(n-1,dimension,N)),
                                                      fParams = fParams, gParams=gParams),
                 KalmanRes = list(filteringParticle = kalmanParticles,
                                  filteringLogWeights = array(log(1/N),c(n,1,N))),
@@ -180,7 +184,7 @@ names(dfResList) <- c("mean","sum","mean_squared","sum_squared")
 
 if(Sys.info()["nodename"] == "greyplover.stats.ox.ac.uk" || Sys.info()["nodename"] == "greypartridge.stats.ox.ac.uk" ||
    Sys.info()["nodename"] == "greyheron.stats.ox.ac.uk" || Sys.info()["nodename"] == "greywagtail.stats.ox.ac.uk") {
-  saveRDS(dfResList, file = paste0("curse_of_dimensionality_res_",id,".RDS"))
+  saveRDS(dfResList, file = paste0("curse_of_dimensionality2_res_",id,".RDS"))
 }
 
 ########################
@@ -219,7 +223,7 @@ names(dfResBiasVar) <- c("mean","sum","mean_squared","sum_squared")
 
 if(Sys.info()["nodename"] == "greyplover.stats.ox.ac.uk" || Sys.info()["nodename"] == "greypartridge.stats.ox.ac.uk" ||
    Sys.info()["nodename"] == "greyheron.stats.ox.ac.uk" || Sys.info()["nodename"] == "greywagtail.stats.ox.ac.uk") {
-  saveRDS(dfResBiasVar, file = paste0("curse_of_dimensionality_res_biasvar_",id,".RDS"))
+  saveRDS(dfResBiasVar, file = paste0("curse_of_dimensionality2_res_biasvar_",id,".RDS"))
 }
 
 
@@ -269,7 +273,7 @@ dfWeights$Algorithm <- as.factor(dfWeights$Algorithm)
 
 if(Sys.info()["nodename"] == "greyplover.stats.ox.ac.uk" || Sys.info()["nodename"] == "greypartridge.stats.ox.ac.uk" ||
    Sys.info()["nodename"] == "greyheron.stats.ox.ac.uk" || Sys.info()["nodename"] == "greywagtail.stats.ox.ac.uk") {
-  saveRDS(dfWeights, file = paste0("curse_of_dimensionality_weight_",id,".RDS"))
+  saveRDS(dfWeights, file = paste0("curse_of_dimensionality2_weight_",id,".RDS"))
 }
 
 ########
