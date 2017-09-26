@@ -38,3 +38,37 @@ generateA <- function(neighbour_correlation, dimension) {
   }
   return(A)
 }
+
+generateA_power <- function(alpha, dimension) {
+  #This function defines A such that the diagonal elements are all ones
+  #and the correlation decreases exponentially with the distance as d^alpha
+  #where alpha is fixed by the user
+  if(alpha > 0) {
+    warning("alpha should be negative to have decay of correlation.")
+  }
+  #This function is not written in the best possible way...
+  #Write the first row
+  first_row <- rep(NA, dimension)
+  first_row[1] <- 1
+  if(dimension == 2) {
+    first_row[2] <- 2^alpha
+  } else if(dimension == 3) {
+    first_row[2] <- 2^alpha
+    first_row[3] <- 2^alpha
+  } else if(dimension > 3) {
+    for(i in 2:floor(dimension/2)) {
+      first_row[i] <- i^alpha
+      first_row[dimension-i+2] <- i^alpha
+    }
+    first_row[is.na(first_row)] <- (i+1)^alpha
+  }
+  A <- matrix(first_row, nrow=length(first_row), ncol=length(first_row), byrow = TRUE)
+  if(dimension == 1) {
+    return(A)
+  }
+  for(i in 2:length(first_row)) {
+    A[i,] <- emuR::shift(first_row, delta = i-1, circular = TRUE)
+  }
+  return(A)
+
+}
